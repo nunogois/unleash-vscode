@@ -1,27 +1,102 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
+import fetch from "node-fetch";
+// import axios from "axios";
+// import { SidebarProvider } from "./SidebarProvider";
+import { authenticate } from "./authenticate";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  console.log("sup");
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "unleash-vscode" is now active in the web extension host!');
+  const UNLEASH_URL = vscode.workspace
+    .getConfiguration("unleash-vscode")
+    .get<string>("url");
+  const UNLEASH_TOKEN = vscode.workspace
+    .getConfiguration("unleash-vscode")
+    .get<string>("token");
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('unleash-vscode.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
+  // Sidebar
+  // const sidebarProvider = new SidebarProvider(context.extensionUri);
+  // context.subscriptions.push(
+  //   vscode.window.registerWebviewViewProvider(
+  //     "vsinder-sidebar",
+  //     sidebarProvider
+  //   )
+  // );
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Unleash in a web extension host!');
-	});
+  let toggles: any[] = [];
 
-	context.subscriptions.push(disposable);
+  (async () => {
+    if (UNLEASH_URL && UNLEASH_TOKEN) {
+      try {
+        const response = await fetch(
+          "https://unleash.nunogois.com/api/admin/features"
+        );
+        toggles = (await response.json()) as any[];
+      } catch (error) {
+        console.log(error);
+      }
+      console.log(toggles);
+      const provider = vscode.languages.registerCompletionItemProvider("*", {
+        provideCompletionItems(document, position) {
+          return toggles.map(
+            (toggle: any) => new vscode.CompletionItem(toggle.name)
+          );
+        },
+      });
+      context.subscriptions.push(provider);
+    }
+  })();
+
+  // Autocomplete
+  // if (UNLEASH_URL && UNLEASH_TOKEN) {
+  //   fetch(`https://unleash.nunogois.com/api/admin/features`)
+  //     .then((res) => {
+  //       console.log(res);
+  //     })
+  //     // .then((toggles) => {
+  //     //   console.log(toggles);
+  //     //   const provider = vscode.languages.registerCompletionItemProvider("*", {
+  //     //     provideCompletionItems(document, position) {
+  //     //       return toggles.map(
+  //     //         (toggle: any) => new vscode.CompletionItem(toggle.name)
+  //     //       );
+  //     //     },
+  //     //   });
+  //     //   context.subscriptions.push(provider);
+  //     // })
+  //     .catch((err) => {
+  //       console.log(err);
+  //     });
+  // }
+
+  // Authentication
+  context.subscriptions.push(
+    vscode.commands.registerCommand("unleash-vscode.authenticate", () => {
+      authenticate();
+    })
+  );
+
+  // Reload
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "unleash-vscode.reloadSidebar",
+      async () => {
+        await vscode.commands.executeCommand("workbench.action.closeSidebar");
+        await vscode.commands.executeCommand(
+          "workbench.view.extension.unleash-vscode-sidebar-view"
+        );
+        setTimeout(() => {
+          vscode.commands.executeCommand(
+            "workbench.action.webview.openDeveloperTools"
+          );
+        }, 500);
+      }
+    )
+  );
 }
 
-// this method is called when your extension is deactivated
 export function deactivate() {}

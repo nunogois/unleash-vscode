@@ -10,10 +10,23 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:unleash-vscode.helloWorld"
+    "*"
   ],
   "browser": "./dist/web/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Unleash",
+      "properties": {
+        "unleash-vscode.url": {
+          "type": "string",
+          "description": "Unleash instance URL"
+        },
+        "unleash-vscode.token": {
+          "type": "string",
+          "description": "Unleash token"
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -34,13 +47,25 @@
     "viewsWelcome": [
       {
         "view": "unleash",
-        "contents": "Welcome to the Unleash view! This view is contributed by the `unleash-vscode` extension."
+        "contents": "In order to use the Unleash extension, you should login to your Unleash instance.\n[Login](command:unleash-vscode.authenticate)\nTo learn more about Unleash you can [read our docs](https://docs.getunleash.io/).",
+        "when": "!config.unleash-vscode.url || !config.unleash-vscode.token"
+      },
+      {
+        "view": "unleash",
+        "contents": "Some toggles here...",
+        "when": "config.unleash-vscode.url && config.unleash-vscode.token"
       }
     ],
     "commands": [
       {
-        "command": "unleash-vscode.helloWorld",
-        "title": "Hello World"
+        "command": "unleash-vscode.authenticate",
+        "title": "Authenticate",
+        "category": "Unleash"
+      },
+      {
+        "command": "unleash-vscode.reloadSidebar",
+        "title": "Reload Sidebar Webview",
+        "category": "Unleash"
       }
     ]
   },
@@ -55,19 +80,24 @@
     "run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
   },
   "devDependencies": {
-    "@types/vscode": "^1.71.0",
     "@types/mocha": "^9.1.1",
-    "eslint": "^8.20.0",
+    "@types/node-fetch": "2",
+    "@types/vscode": "^1.71.0",
+    "@types/webpack-env": "^1.17.0",
     "@typescript-eslint/eslint-plugin": "^5.31.0",
     "@typescript-eslint/parser": "^5.31.0",
-    "mocha": "^10.0.0",
-    "typescript": "^4.7.4",
     "@vscode/test-web": "^0.0.29",
-    "ts-loader": "^9.3.1",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0",
-    "@types/webpack-env": "^1.17.0",
     "assert": "^2.0.0",
-    "process": "^0.11.10"
+    "eslint": "^8.20.0",
+    "mocha": "^10.0.0",
+    "process": "^0.11.10",
+    "ts-loader": "^9.3.1",
+    "typescript": "^4.7.4",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "node-fetch": "2"
   }
 }
