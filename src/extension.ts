@@ -19,6 +19,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const flagsProvider = new FlagsView(() => [...entries().values()].map(entry => entry.flag));
   const flagsTree = vscode.window.createTreeView('unleash.flags', { treeDataProvider: flagsProvider, showCollapseAll: false });
   let demoSample: string | undefined;
+  let suspendedRealCache: FlagCache | undefined;
+  let openingDemo = false;
   let connectionEpoch = 0;
   let beforeDemo: { document: vscode.TextDocument; selection: vscode.Selection; viewColumn?: vscode.ViewColumn } | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -97,7 +99,8 @@ export async function activate(context: vscode.ExtensionContext) {
       if (generation !== scanGeneration || disposed) return;
       const text = doc.getText();
       const supported = !!grammar && text.length <= config().get<number>('maxFileSizeKB', 512) * 1024;
-      const matches = grammar && supported ? findFlags(text, grammar, known) : [];
+      const inScope = session.demo ? key === demoSample : key !== demoSample;
+      const matches = grammar && supported && inScope ? findFlags(text, grammar, known) : [];
       if (version !== doc.version) { scheduleScan(); return; }
       documents.set(key, { version, revision, matches, supported });
     }
@@ -144,6 +147,7 @@ export async function activate(context: vscode.ExtensionContext) {
     await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Checking Unleash access…' }, () => next.refresh(() => new Set()));
     if (next.catalogError) { next.dispose(); await vscode.window.showErrorMessage(next.catalogError); return; }
     demoSample = undefined;
+    suspendedRealCache?.dispose(); suspendedRealCache = undefined;
     await session.save(url, credential);
     connectionEpoch++;
     replace(next);
@@ -153,40 +157,53 @@ export async function activate(context: vscode.ExtensionContext) {
     if (advance) await advanceWalkthrough('inspect');
     void vscode.window.showInformationMessage(`Connected: ${next.entries.size} flags. All accessible projects and all environments.`);
   }
-  async function startDemo(advance = false) {
+  async function startDemo(advance = false, openSample = true) {
     const editor = vscode.window.activeTextEditor;
     if (!session.demo && editor && editor.document.uri.toString() !== vscode.Uri.joinPath(context.extensionUri, 'samples', 'flags.ts').toString()) beforeDemo = { document: editor.document, selection: editor.selection, viewColumn: editor.viewColumn };
     connectionEpoch++;
+    if (!session.demo && cache) { suspendedRealCache = cache; cache = undefined; }
     session.enterDemo();
     const next = new FlagCache(new UnleashApi('https://demo.invalid', ''), changed);
     for (const flag of demoFlags()) next.entries.set(flag.name, { flag, fetchedAt: Date.now(), detailed: true });
     next.revision++;
     replace(next);
     const sample = vscode.Uri.joinPath(context.extensionUri, 'samples', 'flags.ts');
-    await vscode.window.showTextDocument(sample, { preview: false });
     demoSample = sample.toString();
+    if (openSample) {
+      openingDemo = true;
+      try { await vscode.window.showTextDocument(sample, { preview: false }); }
+      finally { openingDemo = false; }
+    }
     await scan();
     await vscode.commands.executeCommand('setContext', 'unleash.demoReady', true);
-    if (advance) await advanceWalkthrough('scope', true);
+    if (advance) {
+      const sampleColumn = vscode.window.activeTextEditor?.viewColumn;
+      openingDemo = true;
+      try {
+        await advanceWalkthrough('scope', true);
+        await vscode.window.showTextDocument(sample, { viewColumn: sampleColumn, preview: false });
+      } finally { openingDemo = false; }
+    }
   }
   async function restoreEditor() {
     const previous = beforeDemo; beforeDemo = undefined;
     if (previous && !previous.document.isClosed) await vscode.window.showTextDocument(previous.document, { viewColumn: previous.viewColumn, selection: previous.selection });
   }
-  async function returnToInstance() {
-    demoSample = undefined;
+  async function returnToInstance(restorePrevious = true, keepDemoTab = false) {
+    if (!keepDemoTab) demoSample = undefined;
     void vscode.commands.executeCommand('setContext', 'unleash.demoReady', false);
     const epoch = ++connectionEpoch;
     replace();
     const profile = await session.restore();
     if (epoch !== connectionEpoch || disposed) return;
     if (profile) {
-      const next = new FlagCache(new UnleashApi(profile.url, profile.token), changed);
+      const next = suspendedRealCache ?? new FlagCache(new UnleashApi(profile.url, profile.token), changed);
+      suspendedRealCache = undefined;
       replace(next);
       await refresh();
       await scan();
     } else { paint(); }
-    if (epoch === connectionEpoch) await restoreEditor();
+    if (restorePrevious && epoch === connectionEpoch) await restoreEditor();
   }
   async function disconnect() {
     // Exiting the demo must never delete the real connection.
@@ -217,7 +234,7 @@ export async function activate(context: vscode.ExtensionContext) {
   register('refresh', async () => { if (!cache) return setup(); await refresh(); });
   register('demo', () => startDemo(!session.url));
   register('disconnect', disconnect);
-  register('exitDemo', returnToInstance);
+  register('exitDemo', () => returnToInstance());
   register('openWelcome', () => vscode.commands.executeCommand('workbench.action.openWalkthrough', `${context.extension.id}#unleash.welcome`, false));
   register('website', () => vscode.env.openExternal(vscode.Uri.parse('https://getunleash.io')));
   register('repository', () => vscode.env.openExternal(vscode.Uri.parse('https://github.com/nunogois/unleash-vscode')));
@@ -283,20 +300,26 @@ export async function activate(context: vscode.ExtensionContext) {
       });
     } }),
     vscode.window.tabGroups.onDidChangeTabs(() => {
-      if (!session.demo || !demoSample) return;
+      if (!demoSample) return;
       const stillOpen = vscode.window.tabGroups.all.some(group => group.tabs.some(tab => tab.input instanceof vscode.TabInputText && tab.input.uri.toString() === demoSample));
       if (!stillOpen) {
         demoSample = undefined;
-        void vscode.commands.executeCommand('unleash.exitDemo');
+        if (session.demo) void vscode.commands.executeCommand('unleash.exitDemo');
       }
     }),
     vscode.window.onDidChangeVisibleTextEditors(scheduleScan),
-    vscode.window.onDidChangeActiveTextEditor(scheduleScan),
+    vscode.window.onDidChangeActiveTextEditor(editor => {
+      scheduleScan();
+      if (!demoSample || openingDemo) return;
+      const sampleActive = editor?.document.uri.toString() === demoSample;
+      if (sampleActive && !session.demo) void startDemo(false, false);
+      else if (!sampleActive && session.demo) void returnToInstance(false, true);
+    }),
     vscode.workspace.onDidChangeTextDocument(e => { documents.delete(e.document.uri.toString()); paint(); scheduleScan(); }),
     vscode.workspace.onDidCloseTextDocument(doc => documents.delete(doc.uri.toString())),
     vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('unleash')) { documents.clear(); scheduleScan(); void refresh(); } }),
     vscode.extensions.onDidChange(() => { grammars.dispose(); grammars = new Grammars(context); documents.clear(); scheduleScan(); }),
-    { dispose() { disposed = true; scanGeneration++; clearTimeout(timer); clearTimeout(debounce); cache?.dispose(); grammars.dispose(); } }
+    { dispose() { disposed = true; scanGeneration++; clearTimeout(timer); clearTimeout(debounce); cache?.dispose(); suspendedRealCache?.dispose(); grammars.dispose(); } }
   );
   if (vscode.workspace.isTrusted) void returnToInstance();
   updateStatus();

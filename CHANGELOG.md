@@ -3,7 +3,7 @@
 ## 0.1.4
 
 - Advance onboarding after connecting or opening the demo, completing the appropriate steps only after success.
-- Exit Demo and restore the saved connection when its last sample-file tab closes.
+- Activate Demo only for its active sample tab; restore the real connection when switching away, reactivate on return, and end Demo when the last sample tab closes.
 - Added a Flags panel listing the full known catalog, with search by name, project and description and links to configuration.
 
 ## 0.1.3

@@ -21,3 +21,5 @@ Check actual Unleash evaluation code when interpreting edge cases. The nearby `.
 Run `npm run check`, `npm test`, and `npm run build` for implementation changes. Run `npm run test:integration` when editor behavior changes. Grammar tests use real installed VS Code grammars; check for skipped cases. Package with `npm run package`; do not publish without an explicit request.
 
 This is Nuno Góis’s independent community extension, not an official Unleash product. Preserve that ownership distinction. Release through the manually dispatched GitHub workflow; version input excludes the v prefix. Marketplace publishing uses the nunogois publisher and the VSCE_PAT Actions secret when configured.
+
+Demo follows the active sample tab: restore the saved connection when switching away, reactivate on return, and end Demo when its last tab closes. Never match the sample catalog in real source files.

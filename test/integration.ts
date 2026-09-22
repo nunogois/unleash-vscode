@@ -28,15 +28,16 @@ export async function run() {
   assert(!text.includes('{"rollout"'));
   assert.match(text, /production/);
   assert.match(text, /storefront/);
-  // Confirm recognition updates in an actual editor after typing.
-  const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument({ language: 'python', content: 'flag = "beta-search"\n# "new-checkout"' }));
+  // Real files must never receive the demo catalog, even while the sample tab is open.
+  const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument({ language: 'python', content: 'flag = "beta-search"\n# "new-checkout"' }), { preview: false });
   const waitFor = async (predicate: () => boolean) => {
     const end = Date.now() + 10000;
     while (!predicate()) { if (Date.now() > end) throw new Error('Editor update timed out'); await new Promise(r => setTimeout(r, 100)); }
   };
-  await waitFor(() => api.getMatches(editor.document.uri.toString()).length === 1);
-  await editor.edit(edit => edit.replace(new vscode.Range(0, 0, 0, editor.document.lineAt(0).text.length), 'flag = "not-an-unleash-flag"'));
-  await waitFor(() => api.getMatches(editor.document.uri.toString()).length === 0);
+  await waitFor(() => !api.isDemo() && api.getKnownFlags().length === 0);
+  assert.equal(api.getMatches(editor.document.uri.toString()).length, 0);
+  await vscode.window.showTextDocument(doc, { preview: false });
+  await waitFor(() => api.isDemo() && api.getMatches(doc.uri.toString()).length === 4);
   await vscode.commands.executeCommand('unleash.exitDemo');
   assert.equal(api.getFlagStatus('new-checkout'), undefined);
   await vscode.commands.executeCommand('unleash.openWelcome');
@@ -54,5 +55,5 @@ export async function run() {
   await vscode.window.tabGroups.close(demoTabs());
   await waitFor(() => !api.isDemo() && api.getKnownFlags().length === 0);
   assert.equal(api.getFlagStatus('new-checkout'), undefined);
-  console.log('Extension Host integration passed: activation, flag browser, walkthrough progression, demo/exit, split-tab closing, traffic lights, hover, Python recognition and edit invalidation.');
+  console.log('Extension Host integration passed: activation, flag browser, walkthrough progression, demo/exit, split-tab closing, traffic lights, hover, switching between real files and Demo.');
 }
