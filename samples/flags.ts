@@ -1,4 +1,6 @@
 // Run “Unleash: Try Demo”, then hover the strings below.
+// Hover a flag name to see its status and targeting across environments.
+// Demo is active only in this tab. Switch to your code to resume your instance.
 // All environments is the default. Switch scope using the status bar.
 export const flags = {
   checkout: 'new-checkout',       // green: fully on everywhere

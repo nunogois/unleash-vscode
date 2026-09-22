@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- Replaced the numbered walkthrough and popup inputs with a dedicated editor welcome page: inline connection form, progress, actionable errors, saved-token reuse and a connected state.
+- Simplified the disconnected sidebar to a single setup action.
+- Added Quick Open Flag, Copy Flag Name and Find Flag in Workspace shortcuts.
+- Preserved active-tab Demo behavior, search, flag highlighting and environment controls.
+
 ## 0.1.4
 
 - Advance onboarding after connecting or opening the demo, completing the appropriate steps only after success.

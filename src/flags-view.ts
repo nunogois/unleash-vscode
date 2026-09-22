@@ -11,6 +11,7 @@ export class FlagsView implements vscode.TreeDataProvider<Flag>, vscode.Disposab
   getChildren() { return filterFlags(this.flags(), this.query); }
   getTreeItem(flag: Flag) {
     const item = new vscode.TreeItem(flag.name);
+    item.contextValue = 'unleashFlag';
     item.id = `${flag.project}/${flag.name}`;
     item.description = flag.project;
     item.iconPath = new vscode.ThemeIcon('flag');

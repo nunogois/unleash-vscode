@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 export async function run() {
   const extension = vscode.extensions.getExtension('nunogois.unleash-vscode');
   assert(extension);
@@ -41,11 +43,14 @@ export async function run() {
   await vscode.commands.executeCommand('unleash.exitDemo');
   assert.equal(api.getFlagStatus('new-checkout'), undefined);
   await vscode.commands.executeCommand('unleash.openWelcome');
-  await vscode.commands.executeCommand('unleash.walkthroughDemo');
+  await vscode.commands.executeCommand('unleash.setup');
+  const welcomeTabs = () => vscode.window.tabGroups.all.flatMap(group => group.tabs).filter(tab => tab.input instanceof vscode.TabInputWebview && tab.label === 'Welcome to Unleash');
+  await waitFor(() => welcomeTabs().length === 1);
+  await vscode.commands.executeCommand('unleash.demo');
   assert.equal(api.isDemo(), true);
   const sampleUri = doc.uri.toString();
   const demoTabs = () => vscode.window.tabGroups.all.flatMap(group => group.tabs).filter(tab => tab.input instanceof vscode.TabInputText && tab.input.uri.toString() === sampleUri);
-  assert(demoTabs().length >= 1, 'Advancing the walkthrough must leave the demo file open');
+  assert(demoTabs().length >= 1, 'Starting Demo must open its sample file');
   // Opening another file must not end Demo, and closing one split must preserve it.
   await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: false });
   await vscode.commands.executeCommand('workbench.action.splitEditorRight');
@@ -55,5 +60,25 @@ export async function run() {
   await vscode.window.tabGroups.close(demoTabs());
   await waitFor(() => !api.isDemo() && api.getKnownFlags().length === 0);
   assert.equal(api.getFlagStatus('new-checkout'), undefined);
-  console.log('Extension Host integration passed: activation, flag browser, walkthrough progression, demo/exit, split-tab closing, traffic lights, hover, switching between real files and Demo.');
+  const realFlag = { name: 'real-flag', project: 'test', description: 'Mock integration flag', environments: [{ name: 'production', enabled: true, strategies: [] }] };
+  const server = createServer((req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    if (req.headers.authorization !== 'fixture-token') { res.writeHead(401); res.end('{}'); return; }
+    res.end(JSON.stringify(req.url === '/api/admin/projects' ? { projects: [{ id: 'test' }] } : req.url === '/api/admin/projects/test/features' ? { features: [realFlag] } : realFlag));
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    await assert.rejects(api.connectForTest(url, 'bad-token'), /invalid or expired/);
+    assert.equal(api.getKnownFlags().length, 0);
+    await api.connectForTest(url, 'fixture-token');
+    assert.equal(api.getKnownFlags()[0].name, 'real-flag');
+    await api.connectForTest(url, ''); // Reuse SecretStorage without sending a token back to the webview.
+    await vscode.commands.executeCommand('unleash.demo');
+    assert.equal(api.getKnownFlags().length, 4);
+    await vscode.window.showTextDocument(editor.document, { preview: false });
+    await waitFor(() => !api.isDemo() && api.getKnownFlags()[0]?.name === 'real-flag');
+    await vscode.commands.executeCommand('unleash.disconnect');
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+  console.log('Extension Host integration passed: activation, flag browser, welcome tab, inline connection flow and saved-token reuse, demo/exit, split-tab closing, traffic lights, hover, switching between real files and Demo.');
 }

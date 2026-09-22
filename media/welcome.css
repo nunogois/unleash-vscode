@@ -1,0 +1,38 @@
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font: var(--vscode-font-size, 13px)/1.6 var(--vscode-font-family, sans-serif); }
+main { max-width: 1040px; padding: 40px 48px 24px; margin: auto; }
+header { display: flex; align-items: center; gap: 14px; font-size: 11px; letter-spacing: .14em; font-weight: 650; }
+.intro { max-width: 650px; padding: 38px 0 28px; }
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .14em; color: var(--vscode-descriptionForeground); }
+h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.12; letter-spacing: -.04em; font-weight: 650; margin: 14px 0 18px; }
+.lede { font-size: 16px; max-width: 550px; color: var(--vscode-descriptionForeground); }
+h2 { margin: 0 0 8px; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
+h3 { margin: 0; font-size: 13px; }
+p { margin: 8px 0 18px; }
+.columns { display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px; }
+.card { border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 10px; padding: 26px; background: var(--vscode-sideBar-background); }
+.card > p, .tips p { color: var(--vscode-descriptionForeground); }
+.demo { display: flex; flex-direction: column; align-items: flex-start; }
+.pill { border: 1px solid var(--vscode-panel-border); border-radius: 20px; padding: 3px 9px; font-size: 9px; letter-spacing: .1em; margin-bottom: 23px; }
+.lights { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; margin: 10px 0 28px; }
+label { display: block; font-weight: 600; margin: 18px 0 7px; }
+input { width: 100%; padding: 10px 12px; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 4px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: inherit; }
+button { cursor: pointer; padding: 9px 15px; border: 1px solid transparent; border-radius: 4px; font: inherit; font-weight: 600; background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+button:hover { background: var(--vscode-button-hoverBackground, var(--vscode-button-background)); }
+button.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+button.secondary:hover { background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-secondaryBackground)); }
+button:disabled { opacity: .65; cursor: wait; }
+button.link { background: transparent; color: var(--vscode-textLink-foreground); padding: 0; font-weight: 400; }
+button.link:hover { text-decoration: underline; }
+input:focus, button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.hint { color: var(--vscode-descriptionForeground); font-size: 11px; margin: 10px 0 18px; }
+#error { color: var(--vscode-errorForeground); }
+#progress { font-size: 12px; }
+.tips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; padding: 32px 0 20px; }
+.tips p { font-size: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0; }
+footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px; border-top: 1px solid var(--vscode-panel-border); padding-top: 20px; color: var(--vscode-descriptionForeground); font-size: 11px; }
+nav { display: flex; gap: 18px; }
+[hidden] { display: none !important; }
+@media (max-width: 650px) { main { padding: 24px; } .columns, .tips { grid-template-columns: 1fr; } .intro { padding-top: 24px; } .tips { gap: 10px; } }

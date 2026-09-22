@@ -9,13 +9,13 @@ An independent, read-only extension that brings Unleash flag configuration into 
 ## Try it
 
 1. Install the local `.vsix` with **Extensions → … → Install from VSIX**.
-2. The getting-started walkthrough opens on first use. You can reopen it with **Unleash: Getting Started** in the Command Palette.
-3. Click **Connect to Unleash** in the sidebar and enter your URL and PAT, or **Try the offline demo**.
+2. The **Welcome to Unleash** editor page opens on first use. Reopen it with **Unleash: Getting Started**, **Unleash: Connect**, or the sidebar’s **Set up Unleash** button.
+3. Enter your URL and PAT directly on the welcome page, then choose **Connect to Unleash**. Errors and connection progress stay on that page. You can also **Try the offline demo**.
 4. Open code containing an exact flag name. Hover for configuration or follow **Open in Unleash**. Cmd/Ctrl-click also opens the flag.
 
 **Demo is temporary.** It preserves your real URL, PAT and selected environment. Click **Unleash Demo · Exit** in the status bar or **Return to my instance** in the sidebar to reconnect without re-entering credentials and return to your previous editor. Changing environments in Demo only affects Demo. Demo is active only while its sample tab is active. Switching to a real file restores the saved connection and cached flags; returning to the sample reactivates Demo. Closing the last sample tab ends Demo entirely. Reloading VS Code also resumes the saved connection. If you have not connected yet, Exit Demo returns to setup. Only the explicit **Disconnect and Forget Credentials** action removes your saved connection.
 
-The walkthrough advances after a successful connection and after opening the offline demo. Demo opens alongside the next step so the sample stays available.
+After connecting, the welcome page confirms access and offers **Browse flags** and **Quick open a flag**. Changing connections uses the same form; leaving PAT blank reuses the saved token only for the same instance. The sidebar stays focused on everyday flag browsing.
 
 The **Flags** section lists the complete known catalog, with project names and descriptions on hover. Click the search icon to filter by flag name, project or description, and clear the search to restore the full list. Click a flag to open its configuration in Unleash (in Demo, it opens the sample file). Browsing the list does not fetch every flag’s strategy details.
 
@@ -24,6 +24,14 @@ The sidebar stays available after onboarding with connection status, environment
 Generate a PAT in your Unleash profile settings. The extension uses the Admin API and inherits that user's read permissions. Every accessible project is included automatically. The status bar defaults to **All** environments; click it to select a particular environment, refresh, reconnect, or change settings.
 
 The URL and chosen environment belong to the workspace. The PAT is stored only in VS Code SecretStorage, keyed to the connection and workspace. Remote instances require HTTPS; localhost HTTP is supported for development. Tokens are never written to settings, output logs, or source files. The extension only sends GET requests and refuses redirects. It does not modify flags, execute source code, or send source files to Unleash. No telemetry is included.
+
+## Developer shortcuts
+
+- **Unleash: Quick Open Flag**: search names, projects and descriptions in the Command Palette, then open a flag in Unleash.
+- **Copy Flag Name**: use the inline copy button or right-click a flag in the panel.
+- **Find Flag in Workspace**: right-click a flag to open VS Code’s literal, case-sensitive workspace search. Results can include comments and longer strings; this is text search, not a semantic reference index.
+
+The welcome page adapts to your editor theme, supports keyboard navigation, and clears the PAT field on submission. Saved tokens are never sent back to the page or stored in webview state.
 
 ## What the colors mean
 
@@ -82,7 +90,7 @@ The integration test uses a separate temporary VS Code profile and opens/closes 
 
 ## Release
 
-Open **Actions → Release extension → Run workflow**, select **main**, and enter a numeric version such as `0.1.3` (no `v` prefix). The workflow checks types, runs unit/grammar tests and VS Code integration tests, packages the extension, and creates a GitHub release with the VSIX and SHA-256 checksum. It also retains the VSIX as an Actions artifact.
+Open **Actions → Release extension → Run workflow**, select **main**, and enter a numeric version such as `0.2.0` (no `v` prefix). The workflow checks types, runs unit/grammar tests and VS Code integration tests, packages the extension, and creates a GitHub release with the VSIX and SHA-256 checksum. It also retains the VSIX as an Actions artifact.
 
 The release tag is `v` followed by your version. Its source contains the matching package version; the workflow does not push a version commit onto main. New releases must not be older than an existing release tag. Rerunning an existing version uses its original tagged source and, when present, its already-published GitHub installer. This lets you retry Marketplace publishing after fixing credentials without replacing a released installer.
 
@@ -103,7 +111,8 @@ When upgrading from the earlier **local-development** build, uninstall that exte
 - `model.ts`: active release milestone resolution and conservative status classification.
 - `hover.ts`: escaped, formatted hover content shared with tests.
 - `session.ts`: secure saved connection and temporary Demo state.
-- `sidebar.ts`: native onboarding and connection controls.
+- `welcome.ts`: dedicated editor setup page and restricted message handling.
+- `sidebar.ts` / `flags-view.ts`: connection controls and flag browsing.
 - `grammars.ts` / `recognition.ts`: installed grammar loading and complete-string recognition.
 - `extension.ts`: onboarding, secure credentials, refresh scheduling, editor decorations, hovers and links.
 - `demo.ts`: deterministic offline examples.

@@ -2,7 +2,7 @@
   "name": "unleash-vscode",
   "displayName": "Unleash for VS Code",
   "description": "See Unleash feature flag configuration in your code, across projects and environments.",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "publisher": "nunogois",
   "license": "MIT",
   "engines": {
@@ -107,12 +107,19 @@
         "title": "Unleash: Open Flag"
       },
       {
-        "command": "unleash.walkthroughConnect",
-        "title": "Unleash: Connect and Continue"
+        "command": "unleash.quickOpen",
+        "title": "Unleash: Quick Open Flag",
+        "icon": "$(search)"
       },
       {
-        "command": "unleash.walkthroughDemo",
-        "title": "Unleash: Try Demo and Continue"
+        "command": "unleash.copyFlagName",
+        "title": "Unleash: Copy Flag Name",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "unleash.findFlagUsages",
+        "title": "Unleash: Find Flag in Workspace",
+        "icon": "$(search)"
       }
     ],
     "configuration": {
@@ -177,49 +184,6 @@
         }
       }
     ],
-    "walkthroughs": [
-      {
-        "id": "unleash.welcome",
-        "title": "Unleash in your editor",
-        "description": "Connect your instance or explore an offline demo. Reopen this guide with Unleash: Getting Started.",
-        "steps": [
-          {
-            "id": "connect",
-            "title": "Connect your instance",
-            "description": "Enter your instance URL and a Personal Access Token from your Unleash profile. Every accessible project is included.\n[Connect to Unleash](command:unleash.walkthroughConnect)",
-            "media": {
-              "markdown": "media/connect.md"
-            },
-            "completionEvents": [
-              "onContext:unleash.connected || unleash.demoReady"
-            ]
-          },
-          {
-            "id": "inspect",
-            "title": "Inspect a flag in code",
-            "description": "Open a source file and hover an exact flag-name string. The tooltip shows rollout, targeting and current release milestones.\n[Try the offline demo](command:unleash.walkthroughDemo)",
-            "media": {
-              "markdown": "media/inspect.md"
-            },
-            "completionEvents": [
-              "onContext:unleash.demoReady"
-            ]
-          },
-          {
-            "id": "scope",
-            "title": "Choose your scope and return from Demo",
-            "description": "All environments is the default. The Unleash sidebar has connection, environment and refresh controls. Use Exit Demo to return to your instance.\n[Open Unleash sidebar](command:unleash.home.focus)",
-            "media": {
-              "markdown": "media/scope.md"
-            },
-            "completionEvents": [
-              "onCommand:unleash.environment",
-              "onCommand:unleash.exitDemo"
-            ]
-          }
-        ]
-      }
-    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -247,7 +211,7 @@
       {
         "view": "unleash.home",
         "when": "!unleash.connected && !unleash.demo",
-        "contents": "See your feature flags without leaving the editor.\n\nConnect your instance with a Personal Access Token. All accessible projects and environments are included automatically.\n[Connect to Unleash](command:unleash.setup)\n[Try the offline demo](command:unleash.demo)\n\nYour token stays in encrypted VS Code storage.\n\n[getunleash.io](https://getunleash.io) \u00b7 [GitHub](https://github.com/nunogois/unleash-vscode)"
+        "contents": "Your feature flags, right where you code.\n\nConnect your instance or explore a demo in the welcome page.\n[Set up Unleash](command:unleash.setup)"
       }
     ],
     "menus": {
@@ -280,16 +244,25 @@
       ],
       "commandPalette": [
         {
-          "command": "unleash.walkthroughConnect",
+          "command": "unleash.openFlag",
           "when": "false"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "unleash.copyFlagName",
+          "when": "view == unleash.flags && viewItem == unleashFlag",
+          "group": "inline"
         },
         {
-          "command": "unleash.walkthroughDemo",
-          "when": "false"
+          "command": "unleash.findFlagUsages",
+          "when": "view == unleash.flags && viewItem == unleashFlag",
+          "group": "navigation"
         },
         {
           "command": "unleash.openFlag",
-          "when": "false"
+          "when": "view == unleash.flags && viewItem == unleashFlag",
+          "group": "navigation"
         }
       ]
     }

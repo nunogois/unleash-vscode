@@ -9,6 +9,7 @@ import { renderHover } from './hover';
 import { ConnectionSession } from './session';
 import { UnleashSidebar } from './sidebar';
 import { FlagsView } from './flags-view';
+import { WelcomePage } from './welcome';
 
 const config = () => vscode.workspace.getConfiguration('unleash');
 export async function activate(context: vscode.ExtensionContext) {
@@ -18,6 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const sidebar = new UnleashSidebar(context.extensionUri);
   const flagsProvider = new FlagsView(() => [...entries().values()].map(entry => entry.flag));
   const flagsTree = vscode.window.createTreeView('unleash.flags', { treeDataProvider: flagsProvider, showCollapseAll: false });
+  const welcome = new WelcomePage(context.extensionUri, () => ({ url: session.url, connected: !!session.url && !!(session.demo ? suspendedRealCache : cache) && !(session.demo ? suspendedRealCache : cache)?.catalogError, count: (session.demo ? suspendedRealCache : cache)?.entries.size ?? 0 }), connect);
   let demoSample: string | undefined;
   let suspendedRealCache: FlagCache | undefined;
   let openingDemo = false;
@@ -64,6 +66,7 @@ export async function activate(context: vscode.ExtensionContext) {
     flagsTree.message = flagsProvider.query
       ? `${flagsProvider.getChildren().length} of ${count} flags · Search: ${flagsProvider.query}`
       : cache?.catalogError ? `Unable to refresh: ${cache.catalogError}` : `${count} flags · All accessible projects`;
+    welcome.update();
     status.show();
   }
   function paint() {
@@ -131,33 +134,27 @@ export async function activate(context: vscode.ExtensionContext) {
     documents.clear(); failures = 0; scanGeneration++;
     paint();
   }
-  async function advanceWalkthrough(step: string, beside = false) {
-    await vscode.commands.executeCommand('workbench.action.openWalkthrough', { category: `${context.extension.id}#unleash.welcome`, step }, beside);
-  }
-  async function setup(advance = false) {
-    const input = await vscode.window.showInputBox({ title: 'Connect to Unleash · 1 of 2', prompt: 'Instance URL (all accessible projects and environments are included)', value: session.url ?? '', placeHolder: 'https://your-instance.getunleash.io', ignoreFocusOut: true, validateInput: value => { try { normalizeUrl(value); return undefined; } catch (e) { return (e as Error).message; } } });
-    if (input === undefined) return;
+  function setup() { welcome.show(); }
+  async function connect(input: string, token: string) {
     const url = normalizeUrl(input);
     const saved = session.url === url ? await session.savedProfile() : undefined;
-    const token = await vscode.window.showInputBox({ title: 'Connect to Unleash · 2 of 2', prompt: saved ? 'Enter a replacement PAT, or leave blank to keep your saved token.' : 'Create a PAT in Unleash → Profile → Personal API tokens. It stays in encrypted VS Code storage.', placeHolder: saved ? 'Leave blank to keep the saved PAT' : 'Personal Access Token', password: true, ignoreFocusOut: true, validateInput: value => value.trim() || saved ? undefined : 'Enter your PAT.' });
-    if (token === undefined) return;
-    const credential = token.trim() || saved!.token;
+    const credential = token.trim() || saved?.token;
+    if (!credential) throw new Error('Enter a Personal Access Token for this instance.');
     const api = new UnleashApi(url, credential);
     const next = new FlagCache(api, () => { if (cache === next) changed(); });
-    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Checking Unleash access…' }, () => next.refresh(() => new Set()));
-    if (next.catalogError) { next.dispose(); await vscode.window.showErrorMessage(next.catalogError); return; }
+    await next.refresh(() => new Set());
+    if (next.catalogError) { next.dispose(); throw new Error(next.catalogError); }
     demoSample = undefined;
     suspendedRealCache?.dispose(); suspendedRealCache = undefined;
     await session.save(url, credential);
     connectionEpoch++;
     replace(next);
     await scan();
-    await restoreEditor();
+    beforeDemo = undefined;
     timer = setTimeout(() => { void refresh(); }, interval());
-    if (advance) await advanceWalkthrough('inspect');
-    void vscode.window.showInformationMessage(`Connected: ${next.entries.size} flags. All accessible projects and all environments.`);
+    welcome.update();
   }
-  async function startDemo(advance = false, openSample = true) {
+  async function startDemo(openSample = true) {
     const editor = vscode.window.activeTextEditor;
     if (!session.demo && editor && editor.document.uri.toString() !== vscode.Uri.joinPath(context.extensionUri, 'samples', 'flags.ts').toString()) beforeDemo = { document: editor.document, selection: editor.selection, viewColumn: editor.viewColumn };
     connectionEpoch++;
@@ -175,15 +172,6 @@ export async function activate(context: vscode.ExtensionContext) {
       finally { openingDemo = false; }
     }
     await scan();
-    await vscode.commands.executeCommand('setContext', 'unleash.demoReady', true);
-    if (advance) {
-      const sampleColumn = vscode.window.activeTextEditor?.viewColumn;
-      openingDemo = true;
-      try {
-        await advanceWalkthrough('scope', true);
-        await vscode.window.showTextDocument(sample, { viewColumn: sampleColumn, preview: false });
-      } finally { openingDemo = false; }
-    }
   }
   async function restoreEditor() {
     const previous = beforeDemo; beforeDemo = undefined;
@@ -191,7 +179,6 @@ export async function activate(context: vscode.ExtensionContext) {
   }
   async function returnToInstance(restorePrevious = true, keepDemoTab = false) {
     if (!keepDemoTab) demoSample = undefined;
-    void vscode.commands.executeCommand('setContext', 'unleash.demoReady', false);
     const epoch = ++connectionEpoch;
     replace();
     const profile = await session.restore();
@@ -228,14 +215,12 @@ export async function activate(context: vscode.ExtensionContext) {
   const register = (name: string, fn: (...args: any[]) => unknown) => context.subscriptions.push(vscode.commands.registerCommand(`unleash.${name}`, async (...args: any[]) => {
     try { return await fn(...args); } catch { void vscode.window.showErrorMessage('Unleash could not complete this action. Check your connection and try again.'); }
   }));
-  register('setup', () => setup(!session.url));
-  register('walkthroughConnect', () => setup(true));
-  register('walkthroughDemo', () => startDemo(true));
+  register('setup', setup);
   register('refresh', async () => { if (!cache) return setup(); await refresh(); });
-  register('demo', () => startDemo(!session.url));
+  register('demo', () => startDemo());
   register('disconnect', disconnect);
   register('exitDemo', () => returnToInstance());
-  register('openWelcome', () => vscode.commands.executeCommand('workbench.action.openWalkthrough', `${context.extension.id}#unleash.welcome`, false));
+  register('openWelcome', setup);
   register('website', () => vscode.env.openExternal(vscode.Uri.parse('https://getunleash.io')));
   register('repository', () => vscode.env.openExternal(vscode.Uri.parse('https://github.com/nunogois/unleash-vscode')));
   register('searchFlags', async () => {
@@ -251,13 +236,24 @@ export async function activate(context: vscode.ExtensionContext) {
     await vscode.commands.executeCommand('setContext', 'unleash.flagSearch', false);
     updateStatus();
   });
-  register('openFlag', async (name: string) => {
+  register('openFlag', async (value: string | { name: string }) => {
+    const name = typeof value === 'string' ? value : value?.name;
     const entry = entries().get(name);
     if (!entry) return;
     if (session.demo) {
       await vscode.window.showTextDocument(vscode.Uri.joinPath(context.extensionUri, 'samples', 'flags.ts'), { preview: false });
     } else if (session.url) await vscode.env.openExternal(vscode.Uri.parse(flagUrl(session.url, entry.flag)));
   });
+  async function chooseFlag(value?: string | { name: string }) {
+    const name = typeof value === 'string' ? value : value?.name;
+    if (name) return entries().get(name)?.flag;
+    if (!cache) { setup(); return; }
+    const choice = await vscode.window.showQuickPick([...entries().values()].map(({ flag }) => ({ label: flag.name, description: flag.project, detail: flag.description ?? undefined, flag })), { title: 'Unleash flags', placeHolder: 'Search by flag name, project or description', matchOnDescription: true, matchOnDetail: true });
+    return choice?.flag;
+  }
+  register('quickOpen', async () => { const flag = await chooseFlag(); if (flag) await vscode.commands.executeCommand('unleash.openFlag', flag.name); });
+  register('copyFlagName', async value => { const flag = await chooseFlag(value); if (flag) { await vscode.env.clipboard.writeText(flag.name); void vscode.window.setStatusBarMessage(`Copied ${flag.name}`, 2500); } });
+  register('findFlagUsages', async value => { const flag = await chooseFlag(value); if (flag) await vscode.commands.executeCommand('workbench.action.findInFiles', { query: flag.name, isRegex: false, isCaseSensitive: true, matchWholeWord: false, triggerSearch: true }); });
   register('environment', async () => {
     const environments = [...new Set([...entries().values()].flatMap(e => e.flag.environments.map(x => x.name)))].sort();
     const choices = [{ label: 'All environments', description: 'Default · every environment configured for each flag', value: undefined as string | undefined }, ...environments.map(value => ({ label: value, description: '', value }))];
@@ -279,7 +275,7 @@ export async function activate(context: vscode.ExtensionContext) {
     if (choice) await vscode.commands.executeCommand(choice.command, ...(choice.command === 'workbench.action.openSettings' ? ['@ext:nunogois.unleash-vscode'] : []));
   });
   context.subscriptions.push(
-    status, sidebar, flagsProvider, flagsTree, vscode.window.registerTreeDataProvider('unleash.home', sidebar), ...decorationTypes.values(),
+    status, sidebar, welcome, flagsProvider, flagsTree, vscode.window.registerTreeDataProvider('unleash.home', sidebar), ...decorationTypes.values(),
     vscode.languages.registerHoverProvider('*', { provideHover(doc, pos) {
       const data = documents.get(doc.uri.toString());
       if (data?.version !== doc.version) return;
@@ -312,7 +308,7 @@ export async function activate(context: vscode.ExtensionContext) {
       scheduleScan();
       if (!demoSample || openingDemo) return;
       const sampleActive = editor?.document.uri.toString() === demoSample;
-      if (sampleActive && !session.demo) void startDemo(false, false);
+      if (sampleActive && !session.demo) void startDemo(false);
       else if (!sampleActive && session.demo) void returnToInstance(false, true);
     }),
     vscode.workspace.onDidChangeTextDocument(e => { documents.delete(e.document.uri.toString()); paint(); scheduleScan(); }),
@@ -327,8 +323,7 @@ export async function activate(context: vscode.ExtensionContext) {
     await context.globalState.update('onboardingShown', true);
     if (context.extensionMode !== vscode.ExtensionMode.Test) {
       await vscode.commands.executeCommand('unleash.openWelcome');
-      await vscode.commands.executeCommand('unleash.home.focus');
     }
   }
-  return { getKnownFlags: () => flagsProvider.getChildren(), isDemo: () => session.demo, getMatches: (uri: string) => documents.get(uri)?.matches ?? [], getFlagStatus: (name: string) => { const entry = entries().get(name); return entry && assessment(entry); } };
+  return { ...(context.extensionMode === vscode.ExtensionMode.Test ? { connectForTest: connect } : {}), getKnownFlags: () => flagsProvider.getChildren(), isDemo: () => session.demo, getMatches: (uri: string) => documents.get(uri)?.matches ?? [], getFlagStatus: (name: string) => { const entry = entries().get(name); return entry && assessment(entry); } };
 }
