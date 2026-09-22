@@ -9,7 +9,7 @@ An independent, read-only extension that brings Unleash flag configuration into 
 ## Try it
 
 1. Install the local `.vsix` with **Extensions → … → Install from VSIX**.
-2. The getting-started walkthrough opens on first use. You can always reopen it from the **Unleash flag icon** in the Activity Bar.
+2. The getting-started walkthrough opens on first use. You can reopen it with **Unleash: Getting Started** in the Command Palette.
 3. Click **Connect to Unleash** in the sidebar and enter your URL and PAT, or **Try the offline demo**.
 4. Open code containing an exact flag name. Hover for configuration or follow **Open in Unleash**. Cmd/Ctrl-click also opens the flag.
 

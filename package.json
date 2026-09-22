@@ -2,7 +2,7 @@
   "name": "unleash-vscode",
   "displayName": "Unleash for VS Code",
   "description": "See Unleash feature flag configuration in your code, across projects and environments.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "nunogois",
   "license": "MIT",
   "engines": {
@@ -220,7 +220,7 @@
       {
         "view": "unleash.home",
         "when": "!unleash.connected && !unleash.demo",
-        "contents": "See your feature flags without leaving the editor.\n\nConnect your instance with a Personal Access Token. All accessible projects and environments are included automatically.\n[Connect to Unleash](command:unleash.setup)\n[Try the offline demo](command:unleash.demo)\n[Getting started](command:unleash.openWelcome)\n\nYour token stays in encrypted VS Code storage.\n\n[getunleash.io](https://getunleash.io) \u00b7 [GitHub](https://github.com/nunogois/unleash-vscode)"
+        "contents": "See your feature flags without leaving the editor.\n\nConnect your instance with a Personal Access Token. All accessible projects and environments are included automatically.\n[Connect to Unleash](command:unleash.setup)\n[Try the offline demo](command:unleash.demo)\n\nYour token stays in encrypted VS Code storage.\n\n[getunleash.io](https://getunleash.io) \u00b7 [GitHub](https://github.com/nunogois/unleash-vscode)"
       }
     ],
     "menus": {
@@ -231,7 +231,7 @@
           "group": "navigation@0"
         },
         {
-          "command": "unleash.openWelcome",
+          "command": "unleash.repository",
           "when": "view == unleash.home",
           "group": "navigation@2"
         },

@@ -31,7 +31,6 @@ export class UnleashSidebar implements vscode.TreeDataProvider<vscode.TreeItem>,
       item('Environment', 'globe', 'unleash.environment', s.environment ?? 'All'),
       item(`${s.count} flags`, 'flag', undefined, s.demo ? 'Demo data' : 'All accessible projects'),
       ...(!s.demo ? [item('Refresh flags', 'refresh', 'unleash.refresh')] : []),
-      item('Getting started', 'book', 'unleash.openWelcome'),
       item('Settings and connection', 'gear', 'unleash.menu'),
       item('View on GitHub', 'github', 'unleash.repository')
     ];
