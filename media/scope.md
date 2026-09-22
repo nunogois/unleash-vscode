@@ -4,6 +4,6 @@
 
 **Try Demo** lets you explore with sample flags.
 
-Click **Unleash Demo · Exit** in the status bar, or **Return to my instance** in the sidebar, to resume your connection. No credentials to re-enter.
+Click **Unleash Demo · Exit** in the status bar, or **Return to my instance** in the sidebar, to resume your connection. Closing the last demo-file tab also resumes your connection automatically. No credentials to re-enter.
 
-The sidebar also provides **Refresh flags**, **Getting started**, and **Settings and connection**.
+The sidebar also provides **Refresh flags** and **Settings and connection**. The **Flags** section lists all known flags; use its search icon to filter by name, project or description.

@@ -12,6 +12,8 @@ export async function run() {
   await vscode.commands.executeCommand('unleash.demo');
   const doc = vscode.window.activeTextEditor!.document;
   assert.equal(api.getMatches(doc.uri.toString()).length, 4);
+  assert.equal(api.getKnownFlags().length, 4);
+  assert.equal(api.isDemo(), true);
   assert.equal(api.getFlagStatus('new-checkout').status, 'on');
   assert.equal(api.getFlagStatus('beta-search').status, 'conditional');
   assert.equal(api.getFlagStatus('legacy-banner').status, 'off');
@@ -38,5 +40,19 @@ export async function run() {
   await vscode.commands.executeCommand('unleash.exitDemo');
   assert.equal(api.getFlagStatus('new-checkout'), undefined);
   await vscode.commands.executeCommand('unleash.openWelcome');
-  console.log('Extension Host integration passed: activation, sidebar, walkthrough, demo/exit, traffic lights, hover, Python recognition and edit invalidation.');
+  await vscode.commands.executeCommand('unleash.walkthroughDemo');
+  assert.equal(api.isDemo(), true);
+  const sampleUri = doc.uri.toString();
+  const demoTabs = () => vscode.window.tabGroups.all.flatMap(group => group.tabs).filter(tab => tab.input instanceof vscode.TabInputText && tab.input.uri.toString() === sampleUri);
+  assert(demoTabs().length >= 1, 'Advancing the walkthrough must leave the demo file open');
+  // Opening another file must not end Demo, and closing one split must preserve it.
+  await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preview: false });
+  await vscode.commands.executeCommand('workbench.action.splitEditorRight');
+  await waitFor(() => demoTabs().length >= 2);
+  await vscode.window.tabGroups.close(demoTabs()[0]);
+  assert.equal(api.isDemo(), true);
+  await vscode.window.tabGroups.close(demoTabs());
+  await waitFor(() => !api.isDemo() && api.getKnownFlags().length === 0);
+  assert.equal(api.getFlagStatus('new-checkout'), undefined);
+  console.log('Extension Host integration passed: activation, flag browser, walkthrough progression, demo/exit, split-tab closing, traffic lights, hover, Python recognition and edit invalidation.');
 }

@@ -29,7 +29,7 @@ export class UnleashSidebar implements vscode.TreeDataProvider<vscode.TreeItem>,
         item(s.url ? 'Return to my instance' : 'Exit demo', 'debug-stop', 'unleash.exitDemo', s.url ? new URL(s.url).host : 'Back to setup')
       ] : [item(s.error ? 'Connection needs attention' : 'Connected', s.error ? 'warning' : 'plug', 'unleash.setup', s.url ? new URL(s.url).host : undefined, s.error ?? s.url)]),
       item('Environment', 'globe', 'unleash.environment', s.environment ?? 'All'),
-      item(`${s.count} flags`, 'flag', undefined, s.demo ? 'Demo data' : 'All accessible projects'),
+      item(`${s.count} flags`, 'flag', 'unleash.flags.focus', s.demo ? 'Demo data' : 'All accessible projects'),
       ...(!s.demo ? [item('Refresh flags', 'refresh', 'unleash.refresh')] : []),
       item('Settings and connection', 'gear', 'unleash.menu'),
       item('View on GitHub', 'github', 'unleash.repository')

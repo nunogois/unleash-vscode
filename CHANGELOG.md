@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+- Advance onboarding after connecting or opening the demo, completing the appropriate steps only after success.
+- Exit Demo and restore the saved connection when its last sample-file tab closes.
+- Added a Flags panel listing the full known catalog, with search by name, project and description and links to configuration.
+
 ## 0.1.3
 
 - Replaced the sidebar toolbar’s Getting Started button with GitHub and removed redundant Getting Started links from the panel. The walkthrough remains available from the Command Palette.

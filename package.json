@@ -2,7 +2,7 @@
   "name": "unleash-vscode",
   "displayName": "Unleash for VS Code",
   "description": "See Unleash feature flag configuration in your code, across projects and environments.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "nunogois",
   "license": "MIT",
   "engines": {
@@ -91,6 +91,28 @@
         "command": "unleash.repository",
         "title": "Unleash: View GitHub Repository",
         "icon": "$(github)"
+      },
+      {
+        "command": "unleash.searchFlags",
+        "title": "Unleash: Search Flags",
+        "icon": "$(search)"
+      },
+      {
+        "command": "unleash.clearFlagSearch",
+        "title": "Unleash: Clear Flag Search",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "unleash.openFlag",
+        "title": "Unleash: Open Flag"
+      },
+      {
+        "command": "unleash.walkthroughConnect",
+        "title": "Unleash: Connect and Continue"
+      },
+      {
+        "command": "unleash.walkthroughDemo",
+        "title": "Unleash: Try Demo and Continue"
       }
     ],
     "configuration": {
@@ -159,28 +181,28 @@
       {
         "id": "unleash.welcome",
         "title": "Unleash in your editor",
-        "description": "Start with your instance or explore an offline demo. Return here anytime from the Unleash sidebar.",
+        "description": "Connect your instance or explore an offline demo. Reopen this guide with Unleash: Getting Started.",
         "steps": [
           {
             "id": "connect",
             "title": "Connect your instance",
-            "description": "Enter your instance URL and a Personal Access Token from your Unleash profile. Every accessible project is included.\n[Connect to Unleash](command:unleash.setup)",
+            "description": "Enter your instance URL and a Personal Access Token from your Unleash profile. Every accessible project is included.\n[Connect to Unleash](command:unleash.walkthroughConnect)",
             "media": {
               "markdown": "media/connect.md"
             },
             "completionEvents": [
-              "onContext:unleash.connected"
+              "onContext:unleash.connected || unleash.demoReady"
             ]
           },
           {
             "id": "inspect",
             "title": "Inspect a flag in code",
-            "description": "Open a source file and hover an exact flag-name string. The tooltip shows rollout, targeting and current release milestones.\n[Try the offline demo](command:unleash.demo)",
+            "description": "Open a source file and hover an exact flag-name string. The tooltip shows rollout, targeting and current release milestones.\n[Try the offline demo](command:unleash.walkthroughDemo)",
             "media": {
               "markdown": "media/inspect.md"
             },
             "completionEvents": [
-              "onCommand:unleash.demo"
+              "onContext:unleash.demoReady"
             ]
           },
           {
@@ -213,6 +235,11 @@
           "id": "unleash.home",
           "name": "Unleash",
           "contextualTitle": "Unleash"
+        },
+        {
+          "id": "unleash.flags",
+          "name": "Flags",
+          "when": "unleash.connected || unleash.demo"
         }
       ]
     },
@@ -239,6 +266,30 @@
           "command": "unleash.exitDemo",
           "when": "view == unleash.home && unleash.demo",
           "group": "navigation@1"
+        },
+        {
+          "command": "unleash.searchFlags",
+          "when": "view == unleash.flags",
+          "group": "navigation@0"
+        },
+        {
+          "command": "unleash.clearFlagSearch",
+          "when": "view == unleash.flags && unleash.flagSearch",
+          "group": "navigation@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "unleash.walkthroughConnect",
+          "when": "false"
+        },
+        {
+          "command": "unleash.walkthroughDemo",
+          "when": "false"
+        },
+        {
+          "command": "unleash.openFlag",
+          "when": "false"
         }
       ]
     }

@@ -13,7 +13,11 @@ An independent, read-only extension that brings Unleash flag configuration into 
 3. Click **Connect to Unleash** in the sidebar and enter your URL and PAT, or **Try the offline demo**.
 4. Open code containing an exact flag name. Hover for configuration or follow **Open in Unleash**. Cmd/Ctrl-click also opens the flag.
 
-**Demo is temporary.** It preserves your real URL, PAT and selected environment. Click **Unleash Demo · Exit** in the status bar or **Return to my instance** in the sidebar to reconnect without re-entering credentials and return to your previous editor. Changing environments in Demo only affects Demo. Reloading VS Code also resumes the saved connection. If you have not connected yet, Exit Demo returns to setup. Only the explicit **Disconnect and Forget Credentials** action removes your saved connection.
+**Demo is temporary.** It preserves your real URL, PAT and selected environment. Click **Unleash Demo · Exit** in the status bar or **Return to my instance** in the sidebar to reconnect without re-entering credentials and return to your previous editor. Changing environments in Demo only affects Demo. Closing the last demo-file tab also exits Demo; switching to another file or keeping a split copy open does not. Reloading VS Code also resumes the saved connection. If you have not connected yet, Exit Demo returns to setup. Only the explicit **Disconnect and Forget Credentials** action removes your saved connection.
+
+The walkthrough advances after a successful connection and after opening the offline demo. Demo opens alongside the next step so the sample stays available.
+
+The **Flags** section lists the complete known catalog, with project names and descriptions on hover. Click the search icon to filter by flag name, project or description, and clear the search to restore the full list. Click a flag to open its configuration in Unleash (in Demo, it opens the sample file). Browsing the list does not fetch every flag’s strategy details.
 
 The sidebar stays available after onboarding with connection status, environment selection, refresh and settings. Existing connections can reuse their saved PAT during setup by leaving the token field blank.
 
