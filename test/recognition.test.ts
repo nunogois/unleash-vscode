@@ -42,6 +42,7 @@ const cases = [
   ['swift', 'let flag = "new-checkout" // "new-checkout"'],
   ['lua', 'local flag = "new-checkout" -- "new-checkout"']
 ];
+if (process.env.CI) for (const [language] of cases) assert(languages.has(language), `Missing CI grammar: ${language}`);
 for (const [language, source] of cases) test(`${language}: matches a complete string, excluding comments and substrings`, { skip: !languages.has(language) }, async () => {
   const grammar = await registry.loadGrammar(languages.get(language)!);
   assert(grammar);

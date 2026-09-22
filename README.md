@@ -76,7 +76,21 @@ npm run package
 
 The integration test uses a separate temporary VS Code profile and opens/closes its own development window. On macOS it locates the `Code` or `Electron` executable in `/Applications/Visual Studio Code.app`; set `VSCODE_EXECUTABLE_PATH` elsewhere. Grammar tests use the bundled extensions in the default macOS app; set `VSCODE_EXTENSIONS_PATH` to your VS Code `resources/app/extensions` directory on other systems. Grammar tests are reported as skipped if those grammars are not available.
 
-The package is for local installation. `local-development` is a placeholder publisher ID; replace it with your registered publisher before any Marketplace release. Nothing is published automatically.
+## Release
+
+Open **Actions → Release extension → Run workflow**, select **main**, and enter a numeric version such as `0.1.3` (no `v` prefix). The workflow checks types, runs unit/grammar tests and VS Code integration tests, packages the extension, and creates a GitHub release with the VSIX and SHA-256 checksum. It also retains the VSIX as an Actions artifact.
+
+The release tag is `v` followed by your version. Its source contains the matching package version; the workflow does not push a version commit onto main. New releases must not be older than an existing release tag. Rerunning an existing version uses its original tagged source and, when present, its already-published GitHub installer. This lets you retry Marketplace publishing after fixing credentials without replacing a released installer.
+
+### Enable Marketplace publishing
+
+The extension publisher is **nunogois**. Add an Azure DevOps publishing token as the repository Actions secret **VSCE_PAT** under **Settings → Secrets and variables → Actions**. Give it **Marketplace (Manage)** scope and access to this publisher. Do not put the token in source files or workflow inputs. [Microsoft's publishing instructions](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) explain token creation and publisher access.
+
+Every release run publishes the same GitHub VSIX to Marketplace when that secret exists; without it, the run succeeds with GitHub distribution only and reports the skipped Marketplace step. A Marketplace failure leaves the GitHub release available. After configuring or fixing the secret, rerun the same version. Already-published Marketplace versions are skipped.
+
+Microsoft currently documents retirement of global Azure DevOps PATs on **December 1, 2026**. This initial workflow uses PAT authentication supported by our pinned tooling; migrate to Microsoft's supported identity-based publishing before that deadline.
+
+When upgrading from the earlier **local-development** build, uninstall that extension, install **nunogois.unleash-vscode**, and reconnect. VS Code treats them as separate extensions, including their saved credentials.
 
 ## Architecture
 

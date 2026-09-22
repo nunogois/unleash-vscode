@@ -1,0 +1,97 @@
+name: Release extension
+run-name: Release ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, without v (for example 0.1.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: extension-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Validate version and select release source
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = refs/heads/main || { echo 'Run releases from main.'; exit 1; }
+          node scripts/release-version.mjs
+          if git show-ref --verify --quiet "refs/tags/v$RELEASE_VERSION"; then
+            git checkout --detach "v$RELEASE_VERSION"
+            node -e 'const p = require("./package.json"); if (p.version !== process.env.RELEASE_VERSION || p.publisher !== "nunogois") process.exit(1)'
+          else
+            node --input-type=module -e 'import { execFileSync } from "node:child_process"; import { validateVersion } from "./scripts/release-version.mjs"; for (const tag of execFileSync("git", ["tag"], { encoding: "utf8" }).trim().split("\n")) { if (/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(tag)) validateVersion(process.env.RELEASE_VERSION, tag.slice(1)); }'
+            npm version "$RELEASE_VERSION" --no-git-tag-version --allow-same-version --ignore-scripts
+          fi
+      - run: npm ci
+      - name: Download VS Code and its language grammars
+        run: node scripts/ci-editor.mjs
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - name: Test in VS Code
+        run: xvfb-run -a npm run test:integration
+      - name: Package extension
+        run: npm run package -- --out "unleash-vscode-$RELEASE_VERSION.vsix" --githubBranch "v$RELEASE_VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unleash-vscode-${{ inputs.version }}
+          path: '*.vsix'
+          if-no-files-found: error
+      - name: Tag the tested release source
+        shell: bash
+        run: |
+          if ! git show-ref --verify --quiet "refs/tags/v$RELEASE_VERSION"; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add package.json package-lock.json
+            if ! git diff --cached --quiet; then
+              git commit -m "Release $RELEASE_VERSION"
+            fi
+            git tag "v$RELEASE_VERSION"
+            git push origin "refs/tags/v$RELEASE_VERSION"
+          fi
+      - name: Create GitHub release or reuse its installer
+        shell: bash
+        run: |
+          if gh release view "v$RELEASE_VERSION" >/dev/null 2>&1; then
+            # A retry must publish the exact installer already distributed on GitHub.
+            gh release download "v$RELEASE_VERSION" --pattern "unleash-vscode-$RELEASE_VERSION.vsix" --clobber
+          else
+            printf 'Download the VSIX below. In VS Code, choose **Extensions → … → Install from VSIX…**, then open the Unleash sidebar to connect.\n\nThis release uses publisher **nunogois**. If upgrading from a local-development build, uninstall that build and reconnect in this extension.\n' > release-notes.md
+            sha256sum "unleash-vscode-$RELEASE_VERSION.vsix" > "unleash-vscode-$RELEASE_VERSION.sha256"
+            gh release create "v$RELEASE_VERSION" "unleash-vscode-$RELEASE_VERSION.vsix" "unleash-vscode-$RELEASE_VERSION.sha256" --verify-tag --title "Unleash for VS Code $RELEASE_VERSION" --notes-file release-notes.md --generate-notes
+          fi
+      - name: Publish the same installer to Visual Studio Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        shell: bash
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo 'Marketplace skipped: add the VSCE_PAT repository secret to enable it.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npx --no-install vsce publish --packagePath "unleash-vscode-$RELEASE_VERSION.vsix" --skip-duplicate
+      - name: Release link
+        if: success()
+        run: echo "GitHub release → https://github.com/$GITHUB_REPOSITORY/releases/tag/v$RELEASE_VERSION" >> "$GITHUB_STEP_SUMMARY"

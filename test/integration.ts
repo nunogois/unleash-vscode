@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import assert from 'node:assert/strict';
 export async function run() {
-  const extension = vscode.extensions.getExtension('local-development.unleash-vscode');
+  const extension = vscode.extensions.getExtension('nunogois.unleash-vscode');
   assert(extension);
   const api = await extension.activate();
   const commands = await vscode.commands.getCommands(true);

@@ -5,3 +5,4 @@ out/
 .test-profile/
 .test-build/
 .DS_Store
+.vscode-test/

@@ -3,7 +3,7 @@
   "displayName": "Unleash for VS Code",
   "description": "See Unleash feature flag configuration in your code, across projects and environments.",
   "version": "0.1.2",
-  "publisher": "local-development",
+  "publisher": "nunogois",
   "license": "MIT",
   "engines": {
     "vscode": "^1.99.0"

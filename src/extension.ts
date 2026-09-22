@@ -218,7 +218,7 @@ export async function activate(context: vscode.ExtensionContext) {
       ...(!session.demo && session.url ? [{ label: '$(debug-disconnect) Disconnect and forget credentials', command: 'unleash.disconnect' }] : [])
     ];
     const choice = await vscode.window.showQuickPick(choices, { title: 'Unleash', placeHolder: cache?.catalogError ?? (session.demo ? 'Demo · no network requests' : session.url ?? 'Not connected') });
-    if (choice) await vscode.commands.executeCommand(choice.command, ...(choice.command === 'workbench.action.openSettings' ? ['@ext:local-development.unleash-vscode'] : []));
+    if (choice) await vscode.commands.executeCommand(choice.command, ...(choice.command === 'workbench.action.openSettings' ? ['@ext:nunogois.unleash-vscode'] : []));
   });
   context.subscriptions.push(
     status, sidebar, vscode.window.registerTreeDataProvider('unleash.home', sidebar), ...decorationTypes.values(),

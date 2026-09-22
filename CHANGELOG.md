@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added a manually triggered GitHub release workflow with a version input, tested VSIX builds, checksums and optional Marketplace publishing.
+- Switched the extension publisher to `nunogois`; earlier local-development installations need to be uninstalled and reconnected under the new identity.
+
 ## 0.1.2
 
 - Added official Unleash branding to the extension details, walkthrough, Activity Bar and sidebar.

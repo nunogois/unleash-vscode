@@ -10,3 +10,5 @@ out/**
 tsconfig.json
 package-lock.json
 *.vsix
+.vscode-test/**
+.github/**
