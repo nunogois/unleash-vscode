@@ -9,15 +9,15 @@ An independent, read-only extension that brings Unleash flag configuration into 
 ## Try it
 
 1. Install the local `.vsix` with **Extensions → … → Install from VSIX**.
-2. The **Welcome to Unleash** editor page opens on first use. Reopen it with **Unleash: Getting Started**, **Unleash: Connect**, or the sidebar’s **Set up Unleash** button.
+2. The **Welcome to Unleash** editor page opens on first use. Reopen it with **Unleash: Getting Started**, **Unleash: Connect**, or the sidebar’s **Connect to Unleash** button.
 3. Enter your URL and PAT directly on the welcome page, then choose **Connect to Unleash**. Errors and connection progress stay on that page. You can also **Try the offline demo**.
 4. Open code containing an exact flag name. Hover for configuration or follow **Open in Unleash**. Cmd/Ctrl-click also opens the flag.
 
 **Demo is temporary.** It preserves your real URL, PAT and selected environment. Click **Unleash Demo · Exit** in the status bar or **Return to my instance** in the sidebar to reconnect without re-entering credentials and return to your previous editor. Changing environments in Demo only affects Demo. Demo is active only while its sample tab is active. Switching to a real file restores the saved connection and cached flags; returning to the sample reactivates Demo. Closing the last sample tab ends Demo entirely. Reloading VS Code also resumes the saved connection. If you have not connected yet, Exit Demo returns to setup. Only the explicit **Disconnect and Forget Credentials** action removes your saved connection.
 
-After connecting, the welcome page confirms access and offers **Browse flags** and **Quick open a flag**. Changing connections uses the same form; leaving PAT blank reuses the saved token only for the same instance. The sidebar stays focused on everyday flag browsing.
+After connecting, the welcome page confirms access and offers **Browse flags** and **Quick open a flag**. Changing connections uses the same form; leaving PAT blank reuses the saved token, including when you change the URL. The new connection is validated before replacing the saved one. The sidebar stays focused on everyday flag browsing.
 
-The **Flags** section lists the complete known catalog, with project names and descriptions on hover. Click the search icon to filter by flag name, project or description, and clear the search to restore the full list. Click a flag to open its configuration in Unleash (in Demo, it opens the sample file). Browsing the list does not fetch every flag’s strategy details.
+The **Flags** section lists the complete known catalog, with project names and descriptions on hover. Click the search icon to filter by flag name, project or description, and clear the search to restore the full list. Each flag shows its status for the selected environment scope. Selecting it opens the same configuration summary as the hover in an editor tab, with Open in Unleash, Find in workspace, Copy name and Refresh actions. Missing strategy details load as you browse, in batches of 50 flags with at most four requests at a time. Search covers the entire catalog; Show more flags expands the list.
 
 The sidebar stays available after onboarding with connection status, environment selection, refresh and settings. Existing connections can reuse their saved PAT during setup by leaving the token field blank.
 
@@ -27,7 +27,7 @@ The URL and chosen environment belong to the workspace. The PAT is stored only i
 
 ## Developer shortcuts
 
-- **Unleash: Quick Open Flag**: search names, projects and descriptions in the Command Palette, then open a flag in Unleash.
+- **Unleash: Quick Open Flag**: search names, projects and descriptions in the Command Palette, then open its configuration in an editor tab.
 - **Copy Flag Name**: use the inline copy button or right-click a flag in the panel.
 - **Find Flag in Workspace**: right-click a flag to open VS Code’s literal, case-sensitive workspace search. Results can include comments and longer strings; this is text search, not a semantic reference index.
 

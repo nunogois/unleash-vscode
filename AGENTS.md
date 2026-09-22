@@ -23,3 +23,5 @@ Run `npm run check`, `npm test`, and `npm run build` for implementation changes.
 This is Nuno Góis’s independent community extension, not an official Unleash product. Preserve that ownership distinction. Release through the manually dispatched GitHub workflow; version input excludes the v prefix. Marketplace publishing uses the nunogois publisher and the VSCE_PAT Actions secret when configured.
 
 Demo follows the active sample tab: restore the saved connection when switching away, reactivate on return, and end Demo when its last tab closes. Never match the sample catalog in real source files.
+
+Connection edits reuse the saved PAT when left blank, including when the URL changes; validate the new endpoint before saving it. Keep onboarding copy concise and product-focused, without marketing taglines or an author footer.

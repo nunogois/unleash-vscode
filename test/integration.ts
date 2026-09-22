@@ -64,7 +64,8 @@ export async function run() {
   const server = createServer((req, res) => {
     res.setHeader('Content-Type', 'application/json');
     if (req.headers.authorization !== 'fixture-token') { res.writeHead(401); res.end('{}'); return; }
-    res.end(JSON.stringify(req.url === '/api/admin/projects' ? { projects: [{ id: 'test' }] } : req.url === '/api/admin/projects/test/features' ? { features: [realFlag] } : realFlag));
+    const route = req.url?.replace('/moved', '');
+    res.end(JSON.stringify(route === '/api/admin/projects' ? { projects: [{ id: 'test' }] } : route === '/api/admin/projects/test/features' ? { features: [realFlag] } : realFlag));
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -74,11 +75,17 @@ export async function run() {
     await api.connectForTest(url, 'fixture-token');
     assert.equal(api.getKnownFlags()[0].name, 'real-flag');
     await api.connectForTest(url, ''); // Reuse SecretStorage without sending a token back to the webview.
+    await api.connectForTest(`${url}/moved`, ''); // Explicitly changing URL also preserves the saved token.
+    assert.equal(api.getKnownFlags()[0].name, 'real-flag');
+    await vscode.commands.executeCommand('unleash.inspectFlag', { name: 'real-flag' });
+    await waitFor(() => !!api.getDetailHtml()?.includes('Enabled for everyone'));
+    assert(api.getDetailHtml().includes('Mock integration flag'));
+    await waitFor(() => vscode.window.tabGroups.all.flatMap(group => group.tabs).some(tab => tab.input instanceof vscode.TabInputWebview && tab.label === 'real-flag'));
     await vscode.commands.executeCommand('unleash.demo');
     assert.equal(api.getKnownFlags().length, 4);
     await vscode.window.showTextDocument(editor.document, { preview: false });
     await waitFor(() => !api.isDemo() && api.getKnownFlags()[0]?.name === 'real-flag');
     await vscode.commands.executeCommand('unleash.disconnect');
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
-  console.log('Extension Host integration passed: activation, flag browser, welcome tab, inline connection flow and saved-token reuse, demo/exit, split-tab closing, traffic lights, hover, switching between real files and Demo.');
+  console.log('Extension Host integration passed: activation, flag browser, welcome tab, flag details, connection flow and saved-token reuse across URL changes, demo/exit, split-tab closing, traffic lights, hover, switching between real files and Demo.');
 }

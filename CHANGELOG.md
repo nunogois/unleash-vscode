@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- Simplified connection-page copy and styling, with the Unleash Cloud URL format and a stronger Demo button.
+- Added status indicators to the Flags panel and an editor details page with configuration, open, search, copy and refresh actions.
+- Load missing configuration details for browsed flags in bounded batches; reuse cached data and existing status rules.
+- Keep the saved PAT when changing URLs with the token field blank, after validating the new connection.
+
 ## 0.2.0
 
 - Replaced the numbered walkthrough and popup inputs with a dedicated editor welcome page: inline connection form, progress, actionable errors, saved-token reuse and a connected state.

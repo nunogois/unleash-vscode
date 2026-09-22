@@ -10,6 +10,8 @@ import { ConnectionSession } from './session';
 import { UnleashSidebar } from './sidebar';
 import { FlagsView } from './flags-view';
 import { WelcomePage } from './welcome';
+import { FlagDetails } from './details';
+import { detailHtml } from './detail-render';
 
 const config = () => vscode.workspace.getConfiguration('unleash');
 export async function activate(context: vscode.ExtensionContext) {
@@ -17,9 +19,11 @@ export async function activate(context: vscode.ExtensionContext) {
   let cache: FlagCache | undefined;
   const session = new ConnectionSession(context.workspaceState, context.secrets, context.storageUri?.toString() ?? 'global');
   const sidebar = new UnleashSidebar(context.extensionUri);
-  const flagsProvider = new FlagsView(() => [...entries().values()].map(entry => entry.flag));
+  const flagsProvider = new FlagsView(() => [...entries().values()].map(entry => entry.flag), flag => { const entry = entries().get(flag.name); return entry ? assessment(entry) : { status: 'unknown', reason: 'Configuration unavailable.' }; });
   const flagsTree = vscode.window.createTreeView('unleash.flags', { treeDataProvider: flagsProvider, showCollapseAll: false });
   const welcome = new WelcomePage(context.extensionUri, () => ({ url: session.url, connected: !!session.url && !!(session.demo ? suspendedRealCache : cache) && !(session.demo ? suspendedRealCache : cache)?.catalogError, count: (session.demo ? suspendedRealCache : cache)?.entries.size ?? 0 }), connect);
+  let selection: { name: string; project: string; source: string; demo: boolean; entry: CachedFlag } | undefined;
+  const details = new FlagDetails(context.extensionUri, detailAction);
   let demoSample: string | undefined;
   let suspendedRealCache: FlagCache | undefined;
   let openingDemo = false;
@@ -49,7 +53,7 @@ export async function activate(context: vscode.ExtensionContext) {
     return assessFlag(entry.flag, session.environment);
   }
   function visibleNames(): Set<string> {
-    return new Set(vscode.window.visibleTextEditors.flatMap(editor => documents.get(editor.document.uri.toString())?.matches.map(m => m.name) ?? []));
+    return new Set([...vscode.window.visibleTextEditors.flatMap(editor => documents.get(editor.document.uri.toString())?.matches.map(m => m.name) ?? []), ...(flagsTree.visible ? flagsProvider.visibleFlags().map(flag => flag.name) : []), ...(details.visible && selection && !selection.demo && selection.source === session.url ? [selection.name] : [])]);
   }
   function updateStatus() {
     const count = entries().size;
@@ -64,8 +68,9 @@ export async function activate(context: vscode.ExtensionContext) {
     void vscode.commands.executeCommand('setContext', 'unleash.demo', session.demo);
     flagsProvider.refresh();
     flagsTree.message = flagsProvider.query
-      ? `${flagsProvider.getChildren().length} of ${count} flags · Search: ${flagsProvider.query}`
+      ? `${flagsProvider.allMatches().length} of ${count} flags · Search: ${flagsProvider.query}`
       : cache?.catalogError ? `Unable to refresh: ${cache.catalogError}` : `${count} flags · All accessible projects`;
+    updateDetails();
     welcome.update();
     status.show();
   }
@@ -137,7 +142,7 @@ export async function activate(context: vscode.ExtensionContext) {
   function setup() { welcome.show(); }
   async function connect(input: string, token: string) {
     const url = normalizeUrl(input);
-    const saved = session.url === url ? await session.savedProfile() : undefined;
+    const saved = await session.savedProfile();
     const credential = token.trim() || saved?.token;
     if (!credential) throw new Error('Enter a Personal Access Token for this instance.');
     const api = new UnleashApi(url, credential);
@@ -212,6 +217,29 @@ export async function activate(context: vscode.ExtensionContext) {
     md.isTrusted = false;
     return md;
   }
+  function selectedContent() {
+    if (!selection) return;
+    const current = selection.demo ? undefined : session.demo ? suspendedRealCache : cache;
+    const entry = selection.demo ? selection.entry : current?.entries.get(selection.name);
+    if (!selection.demo && (selection.source !== session.url || entry?.flag.project !== selection.project)) return { html: '<h3>Configuration unavailable</h3><p>The flag is no longer in the current connection. Select a flag from the Flags panel.</p>', canOpen: false };
+    if (!entry) return;
+    const result = selection.demo ? assessFlag(entry.flag) : current?.catalogError || entry.error || Date.now() - entry.fetchedAt > interval() * 2
+      ? { status: 'unknown' as const, reason: entry.error ?? current?.catalogError ?? 'Cached configuration is outdated. Refresh to verify the current state.' }
+      : assessFlag(entry.flag, session.environment);
+    return { html: detailHtml(entry.flag, result, { demo: selection.demo, environment: selection.demo ? undefined : session.environment, fetchedAt: entry.fetchedAt, detailed: entry.detailed }), canOpen: !selection.demo };
+  }
+  function updateDetails() { const content = selectedContent(); if (content) details.update(content.html, content.canOpen); }
+  async function detailAction(type: string) {
+    const selected = selection;
+    if (!selected) return;
+    if (type === 'find') await vscode.commands.executeCommand('workbench.action.findInFiles', { query: selected.name, isRegex: false, isCaseSensitive: true, matchWholeWord: false, triggerSearch: true });
+    else if (type === 'copy') await vscode.env.clipboard.writeText(selected.name);
+    else if (type === 'open' && !selected.demo && selectedContent()?.canOpen) await vscode.env.openExternal(vscode.Uri.parse(flagUrl(selected.source, { name: selected.name, project: selected.project })));
+    else if (type === 'refresh' && !selected.demo && selected.source === session.url) {
+      const current = session.demo ? suspendedRealCache : cache;
+      await current?.detail(selected.name, true); updateDetails();
+    }
+  }
   const register = (name: string, fn: (...args: any[]) => unknown) => context.subscriptions.push(vscode.commands.registerCommand(`unleash.${name}`, async (...args: any[]) => {
     try { return await fn(...args); } catch { void vscode.window.showErrorMessage('Unleash could not complete this action. Check your connection and try again.'); }
   }));
@@ -223,18 +251,30 @@ export async function activate(context: vscode.ExtensionContext) {
   register('openWelcome', setup);
   register('website', () => vscode.env.openExternal(vscode.Uri.parse('https://getunleash.io')));
   register('repository', () => vscode.env.openExternal(vscode.Uri.parse('https://github.com/nunogois/unleash-vscode')));
+  register('moreFlags', () => { flagsProvider.limit += 50; updateStatus(); scheduleScan(); });
+  register('inspectFlag', async (value: string | { name: string }) => {
+    const name = typeof value === 'string' ? value : value?.name;
+    const entry = entries().get(name);
+    if (!entry) return;
+    const current = cache;
+    selection = { name, project: entry.flag.project, source: session.url ?? '', demo: session.demo, entry };
+    const content = selectedContent();
+    if (content) details.show(name, content.html, content.canOpen);
+    if (!selection.demo) await current?.detail(name);
+    updateDetails();
+  });
   register('searchFlags', async () => {
     const value = await vscode.window.showInputBox({ title: 'Search Unleash flags', prompt: 'Filter by flag name, project or description. Leave blank to show all flags.', value: flagsProvider.query });
     if (value === undefined) return;
-    flagsProvider.query = value.trim();
+    flagsProvider.query = value.trim(); flagsProvider.limit = 50;
     await vscode.commands.executeCommand('setContext', 'unleash.flagSearch', !!flagsProvider.query);
-    updateStatus();
+    updateStatus(); scheduleScan();
     await vscode.commands.executeCommand('unleash.flags.focus');
   });
   register('clearFlagSearch', async () => {
-    flagsProvider.query = '';
+    flagsProvider.query = ''; flagsProvider.limit = 50;
     await vscode.commands.executeCommand('setContext', 'unleash.flagSearch', false);
-    updateStatus();
+    updateStatus(); scheduleScan();
   });
   register('openFlag', async (value: string | { name: string }) => {
     const name = typeof value === 'string' ? value : value?.name;
@@ -251,7 +291,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const choice = await vscode.window.showQuickPick([...entries().values()].map(({ flag }) => ({ label: flag.name, description: flag.project, detail: flag.description ?? undefined, flag })), { title: 'Unleash flags', placeHolder: 'Search by flag name, project or description', matchOnDescription: true, matchOnDetail: true });
     return choice?.flag;
   }
-  register('quickOpen', async () => { const flag = await chooseFlag(); if (flag) await vscode.commands.executeCommand('unleash.openFlag', flag.name); });
+  register('quickOpen', async () => { const flag = await chooseFlag(); if (flag) await vscode.commands.executeCommand('unleash.inspectFlag', flag.name); });
   register('copyFlagName', async value => { const flag = await chooseFlag(value); if (flag) { await vscode.env.clipboard.writeText(flag.name); void vscode.window.setStatusBarMessage(`Copied ${flag.name}`, 2500); } });
   register('findFlagUsages', async value => { const flag = await chooseFlag(value); if (flag) await vscode.commands.executeCommand('workbench.action.findInFiles', { query: flag.name, isRegex: false, isCaseSensitive: true, matchWholeWord: false, triggerSearch: true }); });
   register('environment', async () => {
@@ -275,7 +315,7 @@ export async function activate(context: vscode.ExtensionContext) {
     if (choice) await vscode.commands.executeCommand(choice.command, ...(choice.command === 'workbench.action.openSettings' ? ['@ext:nunogois.unleash-vscode'] : []));
   });
   context.subscriptions.push(
-    status, sidebar, welcome, flagsProvider, flagsTree, vscode.window.registerTreeDataProvider('unleash.home', sidebar), ...decorationTypes.values(),
+    status, sidebar, welcome, details, flagsProvider, flagsTree, flagsTree.onDidChangeVisibility(scheduleScan), vscode.window.registerTreeDataProvider('unleash.home', sidebar), ...decorationTypes.values(),
     vscode.languages.registerHoverProvider('*', { provideHover(doc, pos) {
       const data = documents.get(doc.uri.toString());
       if (data?.version !== doc.version) return;
@@ -325,5 +365,5 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand('unleash.openWelcome');
     }
   }
-  return { ...(context.extensionMode === vscode.ExtensionMode.Test ? { connectForTest: connect } : {}), getKnownFlags: () => flagsProvider.getChildren(), isDemo: () => session.demo, getMatches: (uri: string) => documents.get(uri)?.matches ?? [], getFlagStatus: (name: string) => { const entry = entries().get(name); return entry && assessment(entry); } };
+  return { ...(context.extensionMode === vscode.ExtensionMode.Test ? { connectForTest: connect } : {}), getKnownFlags: () => flagsProvider.allMatches(), getDetailHtml: () => selectedContent()?.html, isDemo: () => session.demo, getMatches: (uri: string) => documents.get(uri)?.matches ?? [], getFlagStatus: (name: string) => { const entry = entries().get(name); return entry && assessment(entry); } };
 }

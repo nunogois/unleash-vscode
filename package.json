@@ -2,7 +2,7 @@
   "name": "unleash-vscode",
   "displayName": "Unleash for VS Code",
   "description": "See Unleash feature flag configuration in your code, across projects and environments.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "nunogois",
   "license": "MIT",
   "engines": {
@@ -30,8 +30,9 @@
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {
-    "vscode-textmate": "^9.2.0",
-    "vscode-oniguruma": "^2.0.1"
+    "markdown-it": "^14.3.2",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -104,7 +105,7 @@
       },
       {
         "command": "unleash.openFlag",
-        "title": "Unleash: Open Flag"
+        "title": "Unleash: Open in Unleash"
       },
       {
         "command": "unleash.quickOpen",
@@ -120,6 +121,15 @@
         "command": "unleash.findFlagUsages",
         "title": "Unleash: Find Flag in Workspace",
         "icon": "$(search)"
+      },
+      {
+        "command": "unleash.inspectFlag",
+        "title": "Unleash: View Flag Configuration",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "unleash.moreFlags",
+        "title": "Unleash: Show More Flags"
       }
     ],
     "configuration": {
@@ -211,7 +221,7 @@
       {
         "view": "unleash.home",
         "when": "!unleash.connected && !unleash.demo",
-        "contents": "Your feature flags, right where you code.\n\nConnect your instance or explore a demo in the welcome page.\n[Set up Unleash](command:unleash.setup)"
+        "contents": "Connect this extension to your Unleash instance.\n[Connect to Unleash](command:unleash.setup)"
       }
     ],
     "menus": {
@@ -245,6 +255,14 @@
       "commandPalette": [
         {
           "command": "unleash.openFlag",
+          "when": "false"
+        },
+        {
+          "command": "unleash.inspectFlag",
+          "when": "false"
+        },
+        {
+          "command": "unleash.moreFlags",
           "when": "false"
         }
       ],

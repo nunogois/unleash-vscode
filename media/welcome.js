@@ -6,7 +6,7 @@
     document.querySelectorAll('button').forEach(button => { button.disabled = value; });
     byId('url').disabled = value;
     byId('token').disabled = value;
-    byId('submit').textContent = value ? 'Connecting…' : 'Connect to Unleash';
+    byId('submit').textContent = value ? 'Connecting…' : 'Connect';
     byId('progress').textContent = value ? 'Checking access to your projects and flags…' : '';
   };
   document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => vscode.postMessage({ type: button.dataset.action })));
@@ -26,7 +26,7 @@
     if (data.type === 'state' || data.type === 'connected') {
       if (!byId('url').value) byId('url').value = data.url || '';
       byId('token').placeholder = data.url ? 'Leave blank to keep your saved PAT' : 'Paste your PAT';
-      byId('token-help').textContent = data.url ? 'Leave blank to reuse your saved PAT for this instance, or enter a replacement.' : 'Create a token in your Unleash profile → Personal API tokens.';
+      byId('token-help').textContent = data.url ? 'Leave blank to keep your saved token.' : 'Create a token in your Unleash profile → Personal API tokens.';
       byId('success').hidden = !data.connected || editing;
       byId('setup').hidden = data.connected && !editing;
       byId('connection').textContent = `${data.count} flags available across your projects. Connected to ${data.url || 'your instance'}.`;
