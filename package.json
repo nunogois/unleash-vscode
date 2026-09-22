@@ -1,103 +1,255 @@
 {
   "name": "unleash-vscode",
-  "displayName": "Unleash",
-  "description": "VS Code extension for Unleash",
-  "version": "0.0.1",
+  "displayName": "Unleash for VS Code",
+  "description": "See Unleash feature flag configuration in your code, across projects and environments.",
+  "version": "0.1.2",
+  "publisher": "local-development",
+  "license": "MIT",
   "engines": {
-    "vscode": "^1.71.0"
+    "vscode": "^1.99.0"
   },
   "categories": [
     "Other"
   ],
+  "main": "./dist/extension.js",
   "activationEvents": [
-    "*"
+    "onStartupFinished"
   ],
-  "browser": "./dist/web/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": true
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "test:integration": "node scripts/integration.mjs",
+    "vscode:prepublish": "npm run check && npm run build",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "vscode-textmate": "^9.2.0",
+    "vscode-oniguruma": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "1.99.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  },
   "contributes": {
+    "commands": [
+      {
+        "command": "unleash.setup",
+        "title": "Unleash: Connect",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "unleash.menu",
+        "title": "Unleash: Settings and Connection"
+      },
+      {
+        "command": "unleash.refresh",
+        "title": "Unleash: Refresh Flags"
+      },
+      {
+        "command": "unleash.environment",
+        "title": "Unleash: Select Environment"
+      },
+      {
+        "command": "unleash.demo",
+        "title": "Unleash: Try Demo"
+      },
+      {
+        "command": "unleash.disconnect",
+        "title": "Unleash: Disconnect and Forget Credentials"
+      },
+      {
+        "command": "unleash.exitDemo",
+        "title": "Unleash: Exit Demo / Return to My Instance",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "unleash.openWelcome",
+        "title": "Unleash: Getting Started",
+        "icon": "$(book)"
+      },
+      {
+        "command": "unleash.website",
+        "title": "Unleash: Visit Website",
+        "icon": {
+          "light": "media/unleash-logo-dark.svg",
+          "dark": "media/unleash-logo-light.svg"
+        }
+      },
+      {
+        "command": "unleash.repository",
+        "title": "Unleash: View GitHub Repository",
+        "icon": "$(github)"
+      }
+    ],
     "configuration": {
       "title": "Unleash",
       "properties": {
-        "unleash-vscode.url": {
-          "type": "string",
-          "description": "Unleash instance URL"
+        "unleash.refreshIntervalSeconds": {
+          "type": "number",
+          "default": 15,
+          "minimum": 5,
+          "maximum": 3600,
+          "description": "Refresh interval. Requests never overlap; failures use exponential backoff."
         },
-        "unleash-vscode.token": {
-          "type": "string",
-          "description": "Unleash token"
+        "unleash.showIndicators": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a traffic light after recognized flag strings."
+        },
+        "unleash.maxFileSizeKB": {
+          "type": "number",
+          "default": 512,
+          "minimum": 16,
+          "maximum": 4096,
+          "description": "Skip larger files to keep the editor responsive."
         }
       }
     },
+    "colors": [
+      {
+        "id": "unleash.on",
+        "description": "Unconditional flag",
+        "defaults": {
+          "dark": "#69D39B",
+          "light": "#18723D",
+          "highContrast": "#69D39B"
+        }
+      },
+      {
+        "id": "unleash.conditional",
+        "description": "Conditional or mixed flag",
+        "defaults": {
+          "dark": "#EBC46A",
+          "light": "#855F00",
+          "highContrast": "#EBC46A"
+        }
+      },
+      {
+        "id": "unleash.off",
+        "description": "Disabled flag",
+        "defaults": {
+          "dark": "#F48787",
+          "light": "#B3261E",
+          "highContrast": "#F48787"
+        }
+      },
+      {
+        "id": "unleash.unknown",
+        "description": "Unknown or outdated flag",
+        "defaults": {
+          "dark": "#CCCCCC",
+          "light": "#616161",
+          "highContrast": "#FFFFFF"
+        }
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "unleash.welcome",
+        "title": "Unleash in your editor",
+        "description": "Start with your instance or explore an offline demo. Return here anytime from the Unleash sidebar.",
+        "steps": [
+          {
+            "id": "connect",
+            "title": "Connect your instance",
+            "description": "Enter your instance URL and a Personal Access Token from your Unleash profile. Every accessible project is included.\n[Connect to Unleash](command:unleash.setup)",
+            "media": {
+              "markdown": "media/connect.md"
+            },
+            "completionEvents": [
+              "onContext:unleash.connected"
+            ]
+          },
+          {
+            "id": "inspect",
+            "title": "Inspect a flag in code",
+            "description": "Open a source file and hover an exact flag-name string. The tooltip shows rollout, targeting and current release milestones.\n[Try the offline demo](command:unleash.demo)",
+            "media": {
+              "markdown": "media/inspect.md"
+            },
+            "completionEvents": [
+              "onCommand:unleash.demo"
+            ]
+          },
+          {
+            "id": "scope",
+            "title": "Choose your scope and return from Demo",
+            "description": "All environments is the default. The Unleash sidebar has connection, environment and refresh controls. Use Exit Demo to return to your instance.\n[Open Unleash sidebar](command:unleash.home.focus)",
+            "media": {
+              "markdown": "media/scope.md"
+            },
+            "completionEvents": [
+              "onCommand:unleash.environment",
+              "onCommand:unleash.exitDemo"
+            ]
+          }
+        ]
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "unleash",
           "title": "Unleash",
-          "icon": "resources/unleash_s.svg"
+          "icon": "media/unleash.svg"
         }
       ]
     },
     "views": {
       "unleash": [
         {
-          "id": "unleash",
-          "name": "Unleash"
+          "id": "unleash.home",
+          "name": "Unleash",
+          "contextualTitle": "Unleash"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "unleash",
-        "contents": "In order to use the Unleash extension, you should login to your Unleash instance.\n[Login](command:unleash-vscode.authenticate)\nTo learn more about Unleash you can [read our docs](https://docs.getunleash.io/).",
-        "when": "!config.unleash-vscode.url || !config.unleash-vscode.token"
-      },
-      {
-        "view": "unleash",
-        "contents": "Some toggles here...",
-        "when": "config.unleash-vscode.url && config.unleash-vscode.token"
+        "view": "unleash.home",
+        "when": "!unleash.connected && !unleash.demo",
+        "contents": "See your feature flags without leaving the editor.\n\nConnect your instance with a Personal Access Token. All accessible projects and environments are included automatically.\n[Connect to Unleash](command:unleash.setup)\n[Try the offline demo](command:unleash.demo)\n[Getting started](command:unleash.openWelcome)\n\nYour token stays in encrypted VS Code storage.\n\n[getunleash.io](https://getunleash.io) \u00b7 [GitHub](https://github.com/nunogois/unleash-vscode)"
       }
     ],
-    "commands": [
-      {
-        "command": "unleash-vscode.authenticate",
-        "title": "Authenticate",
-        "category": "Unleash"
-      },
-      {
-        "command": "unleash-vscode.reloadSidebar",
-        "title": "Reload Sidebar Webview",
-        "category": "Unleash"
-      }
-    ]
+    "menus": {
+      "view/title": [
+        {
+          "command": "unleash.website",
+          "when": "view == unleash.home",
+          "group": "navigation@0"
+        },
+        {
+          "command": "unleash.openWelcome",
+          "when": "view == unleash.home",
+          "group": "navigation@2"
+        },
+        {
+          "command": "unleash.exitDemo",
+          "when": "view == unleash.home && unleash.demo",
+          "group": "navigation@1"
+        }
+      ]
+    }
   },
-  "scripts": {
-    "test": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. --extensionTestsPath=dist/web/test/suite/index.js",
-    "pretest": "yarn run compile-web",
-    "vscode:prepublish": "yarn run package-web",
-    "compile-web": "webpack",
-    "watch-web": "webpack --watch",
-    "package-web": "webpack --mode production --devtool hidden-source-map",
-    "lint": "eslint src --ext ts",
-    "run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
+  "icon": "media/unleash-icon.png",
+  "homepage": "https://getunleash.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nunogois/unleash-vscode.git"
   },
-  "devDependencies": {
-    "@types/mocha": "^9.1.1",
-    "@types/node-fetch": "2",
-    "@types/vscode": "^1.71.0",
-    "@types/webpack-env": "^1.17.0",
-    "@typescript-eslint/eslint-plugin": "^5.31.0",
-    "@typescript-eslint/parser": "^5.31.0",
-    "@vscode/test-web": "^0.0.29",
-    "assert": "^2.0.0",
-    "eslint": "^8.20.0",
-    "mocha": "^10.0.0",
-    "process": "^0.11.10",
-    "ts-loader": "^9.3.1",
-    "typescript": "^4.7.4",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
-  },
-  "dependencies": {
-    "axios": "^0.27.2",
-    "node-fetch": "2"
+  "bugs": {
+    "url": "https://github.com/nunogois/unleash-vscode/issues"
   }
 }

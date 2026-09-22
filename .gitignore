@@ -1,5 +1,7 @@
-out
-dist
-node_modules
-.vscode-test-web/
+node_modules/
+dist/
+out/
 *.vsix
+.test-profile/
+.test-build/
+.DS_Store
