@@ -36,6 +36,7 @@ export async function activate(context: vscode.ExtensionContext) {
   let disposed = false;
   let focused = vscode.window.state.focused;
   let scanGeneration = 0;
+  let onDecorateForTest: ((uri: string, count: number) => void) | undefined;
   const documents = new Map<string, { version: number; revision: number; matches: Match[]; supported: boolean }>();
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 30);
   status.command = 'unleash.menu';
@@ -81,6 +82,10 @@ export async function activate(context: vscode.ExtensionContext) {
     if (disposed) return;
     for (const editor of vscode.window.visibleTextEditors) {
       const record = documents.get(editor.document.uri.toString());
+      // VS Code tracks existing decoration ranges through edits. Keep them until
+      // the new document version has been scanned, rather than clearing them
+      // during the debounce window. Hover/link providers still reject old offsets.
+      if (record && record.version !== editor.document.version) continue;
       const groups = new Map<Status, vscode.DecorationOptions[]>();
       if (record?.version === editor.document.version) for (const match of record.matches) {
         const entry = entries().get(match.name);
@@ -92,6 +97,7 @@ export async function activate(context: vscode.ExtensionContext) {
         group.push(options); groups.set(state, group);
       }
       for (const [state, type] of decorationTypes) editor.setDecorations(type, groups.get(state) ?? []);
+      onDecorateForTest?.(editor.document.uri.toString(), [...groups.values()].reduce((count, group) => count + group.length, 0));
     }
     updateStatus();
   }
@@ -383,7 +389,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (sampleActive && !session.demo) void startDemo(false);
       else if (!sampleActive && session.demo) void returnToInstance(false, true);
     }),
-    vscode.workspace.onDidChangeTextDocument(e => { documents.delete(e.document.uri.toString()); paint(); scheduleScan(); }),
+    vscode.workspace.onDidChangeTextDocument(() => { scheduleScan(); }),
     vscode.workspace.onDidCloseTextDocument(doc => documents.delete(doc.uri.toString())),
     vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('unleash')) { documents.clear(); scheduleScan(); void refresh(); } }),
     vscode.extensions.onDidChange(() => { grammars.dispose(); grammars = new Grammars(context); documents.clear(); scheduleScan(); }),
@@ -397,5 +403,5 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand('unleash.openWelcome');
     }
   }
-  return { ...(context.extensionMode === vscode.ExtensionMode.Test ? { connectForTest: connect, setFocusedForTest: setFocused } : {}), getKnownFlags: () => flagsProvider.allMatches(), getDetailHtml: () => selectedContent()?.html, isDemo: () => session.demo, getMatches: (uri: string) => documents.get(uri)?.matches ?? [], getFlagStatus: (name: string) => { const entry = entries().get(name); return entry && assessment(entry); } };
+  return { ...(context.extensionMode === vscode.ExtensionMode.Test ? { connectForTest: connect, setFocusedForTest: setFocused, observeDecorationsForTest: (callback: typeof onDecorateForTest) => { onDecorateForTest = callback; } } : {}), getKnownFlags: () => flagsProvider.allMatches(), getDetailHtml: () => selectedContent()?.html, isDemo: () => session.demo, getMatches: (uri: string) => documents.get(uri)?.matches ?? [], getFlagStatus: (name: string) => { const entry = entries().get(name); return entry && assessment(entry); } };
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Keep flag indicators visible while typing beside a flag; update them after the document is rescanned.
+
 ## 0.3.0
 
 - Complete flag names inside strings using the local cache.

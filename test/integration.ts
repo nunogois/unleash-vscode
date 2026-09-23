@@ -96,6 +96,22 @@ export async function run() {
     assert.equal(requests, pausedRequests, 'Inactive windows must not poll');
     await api.setFocusedForTest(true);
     assert(requests > pausedRequests, 'Returning to the window refreshes the catalog');
+    const flagEditor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument({ language: 'typescript', content: 'isEnabled("real-flag");' }));
+    await waitFor(() => api.getMatches(flagEditor.document.uri.toString()).length === 1);
+    const painted: number[] = [];
+    api.observeDecorationsForTest((uri: string, count: number) => { if (uri === flagEditor.document.uri.toString()) painted.push(count); });
+    for (const text of [' ', '/', '/', 'x']) {
+      await flagEditor.edit(edit => edit.insert(flagEditor.document.positionAt(flagEditor.document.getText().length), text));
+      await new Promise(resolve => setTimeout(resolve, 30));
+    }
+    await waitFor(() => painted.length > 0);
+    assert.equal(painted.every(count => count === 1), true, 'Typing beside a flag must never clear its decorations');
+    painted.length = 0;
+    const flagStart = flagEditor.document.getText().indexOf('real-flag');
+    await flagEditor.edit(edit => edit.replace(new vscode.Range(flagEditor.document.positionAt(flagStart), flagEditor.document.positionAt(flagStart + 9)), 'not-a-flag'));
+    await waitFor(() => painted.includes(0));
+    assert.equal(api.getMatches(flagEditor.document.uri.toString()).length, 0, 'Changed flag strings must lose their decoration after rescan');
+    api.observeDecorationsForTest(undefined);
     await vscode.commands.executeCommand('unleash.copyFlagReference', 'real-flag');
     assert((await vscode.env.clipboard.readText()).includes('/projects/test/features/real-flag'));
     await vscode.commands.executeCommand('unleash.inspectFlag', { name: 'real-flag' });
