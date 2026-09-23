@@ -90,6 +90,21 @@ export async function run() {
     const realSuggestions = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', completionDoc.uri, new vscode.Position(0, 16));
     assert(realSuggestions?.items.some(item => item.label === 'real-flag'));
     assert.equal(requests, beforeRequests, 'Completion must not fetch data');
+    for (const [content, character, expected] of [
+      ['isEnabled("|")', '"', true],
+      ['isEnabled("r|")', 'r', true],
+      ['isEnabled("unrelated|")', 'd', false],
+      ['// "r|"', 'r', false],
+      ['const r|', 'r', false],
+      ['isEnabled("real-flag"|)', '"', false],
+    ] as const) {
+      const offset = content.indexOf('|');
+      const document = await vscode.workspace.openTextDocument({language: 'typescript', content: content.replace('|', '')});
+      const result = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', document.uri, document.positionAt(offset), character);
+      assert.equal(!!result?.items.some(item => item.label === 'real-flag'), expected, content);
+    }
+    assert.equal(requests, beforeRequests, 'Automatic completion must use the cache too');
+
     await api.setFocusedForTest(false);
     const pausedRequests = requests;
     await vscode.commands.executeCommand('unleash.refresh');

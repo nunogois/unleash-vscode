@@ -336,15 +336,20 @@ export async function activate(context: vscode.ExtensionContext) {
     status, sidebar, welcome, details, flagsProvider, flagsTree, flagsTree.onDidChangeVisibility(scheduleScan), vscode.window.registerTreeDataProvider('unleash.home', sidebar), ...decorationTypes.values(),
     vscode.window.onDidChangeWindowState(state => { void setFocused(state.focused); }),
     vscode.languages.registerCompletionItemProvider('*', { async provideCompletionItems(doc, pos, token, completionContext) {
-      if (completionContext.triggerKind === vscode.CompletionTriggerKind.TriggerCharacter || !cache || (session.demo ? doc.uri.toString() !== demoSample : doc.uri.toString() === demoSample)) return;
+      if (!cache || (session.demo ? doc.uri.toString() !== demoSample : doc.uri.toString() === demoSample)) return;
+      const automatic = completionContext.triggerKind !== vscode.CompletionTriggerKind.Invoke;
+      if (automatic && !config().get('automaticCompletions', true)) return;
       const text = doc.getText();
       if (text.length > config().get<number>('maxFileSizeKB', 512) * 1024) return;
       const version = doc.version;
+      const completionCache = cache;
+      const epoch = connectionEpoch;
       const grammar = await grammars.get(doc.languageId);
-      if (!grammar || token.isCancellationRequested || version !== doc.version) return;
+      if (cache !== completionCache || epoch !== connectionEpoch || !grammar || token.isCancellationRequested || version !== doc.version) return;
       const span = completionRange(text, doc.offsetAt(pos), grammar);
       if (!span) return;
-      return [...entries().values()].filter(entry => safeCompletionName(entry.flag.name, span.quote)).map(entry => {
+      const prefix = text.slice(span.start, doc.offsetAt(pos)).toLowerCase();
+      const items = [...entries().values()].filter(entry => safeCompletionName(entry.flag.name, span.quote) && (!automatic || entry.flag.name.toLowerCase().startsWith(prefix))).map(entry => {
         const item = new vscode.CompletionItem(entry.flag.name, vscode.CompletionItemKind.Value);
         item.range = new vscode.Range(doc.positionAt(span.start), doc.positionAt(span.end));
         item.insertText = entry.flag.name;
@@ -353,7 +358,8 @@ export async function activate(context: vscode.ExtensionContext) {
         if (entry.flag.stale) item.tags = [vscode.CompletionItemTag.Deprecated];
         return item;
       });
-    } }),
+      return new vscode.CompletionList(items, true);
+    } }, ..."\"'`abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.:/"),
     vscode.languages.registerHoverProvider('*', { provideHover(doc, pos) {
       const data = documents.get(doc.uri.toString());
       if (data?.version !== doc.version) return;

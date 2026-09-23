@@ -123,6 +123,6 @@ Automated checks cover mocked API responses, classification, connection/Demo sta
 
 ## Flag autocomplete and cleanup
 
-Invoke IntelliSense inside a string (Ctrl+Space) to complete a flag name from the local catalog. Suggestions include project, cached status, description and configuration; completing a flag makes no API requests. Installed language grammars identify strings, excluding comments and interpolated expressions. Unsupported literals are skipped.
+Flag suggestions appear automatically when you open a quoted string or type a matching flag-name prefix, using the local catalog. Ctrl+Space remains available. Disable `unleash.automaticCompletions` for manual-only suggestions; automatic suggestions respect VS Code’s `editor.suggestOnTriggerCharacters` setting. Suggestions include project, cached status, description and configuration; completing a flag makes no API requests. Installed language grammars identify strings, excluding comments and interpolated expressions. Unsupported literals are skipped.
 
 Stale flags are labeled in the Flags panel, configuration page and suggestions. Use **Find in workspace** to locate their usages. **Copy Flag Reference** in the flag context menu copies its name and Unleash URL for sharing.

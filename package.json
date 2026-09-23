@@ -2,7 +2,7 @@
   "name": "unleash-vscode",
   "displayName": "Unleash for VS Code",
   "description": "See Unleash feature flag configuration in your code, across projects and environments.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "nunogois",
   "license": "MIT",
   "engines": {
@@ -157,6 +157,11 @@
           "minimum": 16,
           "maximum": 4096,
           "description": "Skip larger files to keep the editor responsive."
+        },
+        "unleash.automaticCompletions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suggest cached flag names automatically inside strings. Disable to use Ctrl+Space only."
         }
       }
     },

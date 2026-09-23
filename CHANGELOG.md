@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- Automatically suggest cached flag names while typing inside strings, with an option to keep manual-only completion.
+
 ## 0.3.1
 
 - Keep flag indicators visible while typing beside a flag; update them after the document is rescanned.
