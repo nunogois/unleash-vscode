@@ -55,3 +55,22 @@ test('cache shares in-flight requests, preserves old data on failure and removes
   assert.equal(cache.entries.size, 0); assert.equal(cache.catalogError, undefined);
   cache.dispose();
 });
+
+ test('catalog updates stale metadata without repeatedly loading list details', async () => {
+  const flag = demoFlags()[0]; let stale = false; let details = 0;
+  const api = new UnleashApi('https://example.com', '', async input => {
+    const url = String(input);
+    if (url.endsWith('/projects')) return Response.json({projects: [{id: flag.project}]});
+    if (url.endsWith('/features')) return Response.json({features: [{...flag, stale}]});
+    details++; return Response.json(flag);
+  });
+  const cache = new FlagCache(api, () => {});
+  await cache.refresh(() => new Set([flag.name]));
+  stale = true;
+  await cache.refresh(() => new Set());
+  await cache.refresh(() => new Set());
+  assert.equal(details, 1);
+  assert.equal(cache.entries.get(flag.name)?.flag.stale, true);
+  assert.equal(cache.entries.get(flag.name)?.detailed, true);
+  cache.dispose();
+});

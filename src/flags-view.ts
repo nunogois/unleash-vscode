@@ -18,7 +18,7 @@ export class FlagsView implements vscode.TreeDataProvider<Flag | { more: true }>
     const item = new vscode.TreeItem(flag.name);
     item.contextValue = 'unleashFlag';
     item.id = `${flag.project}/${flag.name}`;
-    item.description = `${flag.project} · ${labels[status.status]}`;
+    item.description = `${flag.project} · ${labels[status.status]}${flag.stale ? ' · Stale' : ''}`;
     item.iconPath = new vscode.ThemeIcon(status.status === 'unknown' ? 'circle-outline' : 'circle-filled', new vscode.ThemeColor(`unleash.${status.status}`));
     item.tooltip = `${flag.name}\n${labels[status.status]} — ${status.reason}\nProject: ${flag.project}${flag.description ? `\n\n${flag.description}` : ''}`;
     item.command = { command: 'unleash.inspectFlag', title: 'View flag configuration', arguments: [flag.name] };

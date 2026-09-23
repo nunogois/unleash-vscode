@@ -34,6 +34,7 @@ function strategyLines(strategy: Strategy): string[] {
 export function renderHover(flag: Flag, result: Assessment, options: { environment?: string; demo?: boolean; fetchedAt: number; detailed: boolean; url?: string }): string {
   const lines = [`### ${escapeText(flag.name)}${options.demo ? ' · Demo' : ''}`, ''];
   if (flag.description) lines.push(escapeText(flag.description), '');
+  if (flag.stale) lines.push('**Stale** · Marked for cleanup in Unleash. Use Find in workspace to locate usages.', '');
   lines.push(`${symbols[result.status]} **${statusText[result.status]}** · ${escapeText(options.environment ?? 'All environments')}`, '',
     `Project: **${escapeText(flag.project)}**`, '', escapeText(result.reason), '', '---', '');
   // Put the selected environment first without hiding the overall picture.
@@ -60,7 +61,6 @@ export function renderHover(flag: Flag, result: Assessment, options: { environme
     }
     lines.push('');
   }
-  if (flag.stale) lines.push('*Marked stale in Unleash.*', '');
   lines.push('---', '');
   if (options.url) lines.push(`[Open in Unleash](<${options.url}>)`, '');
   lines.push(`*${options.detailed ? 'Configuration' : 'Catalog'} updated ${escapeText(new Date(options.fetchedAt).toLocaleTimeString())}*`);

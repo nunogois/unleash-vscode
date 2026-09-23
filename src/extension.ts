@@ -12,6 +12,7 @@ import { FlagsView } from './flags-view';
 import { WelcomePage } from './welcome';
 import { FlagDetails } from './details';
 import { detailHtml } from './detail-render';
+import { completionRange, safeCompletionName } from './completion';
 
 const config = () => vscode.workspace.getConfiguration('unleash');
 export async function activate(context: vscode.ExtensionContext) {
@@ -33,6 +34,7 @@ export async function activate(context: vscode.ExtensionContext) {
   let debounce: ReturnType<typeof setTimeout> | undefined;
   let failures = 0;
   let disposed = false;
+  let focused = vscode.window.state.focused;
   let scanGeneration = 0;
   const documents = new Map<string, { version: number; revision: number; matches: Match[]; supported: boolean }>();
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 30);
@@ -53,7 +55,8 @@ export async function activate(context: vscode.ExtensionContext) {
     return assessFlag(entry.flag, session.environment);
   }
   function visibleNames(): Set<string> {
-    return new Set([...vscode.window.visibleTextEditors.flatMap(editor => documents.get(editor.document.uri.toString())?.matches.map(m => m.name) ?? []), ...(flagsTree.visible ? flagsProvider.visibleFlags().map(flag => flag.name) : []), ...(details.visible && selection && !selection.demo && selection.source === session.url ? [selection.name] : [])]);
+    if (!focused) return new Set();
+    return new Set([...vscode.window.visibleTextEditors.flatMap(editor => documents.get(editor.document.uri.toString())?.matches.map(m => m.name) ?? []), ...(details.visible && selection && !selection.demo && selection.source === session.url ? [selection.name] : [])]);
   }
   function updateStatus() {
     const count = entries().size;
@@ -113,7 +116,10 @@ export async function activate(context: vscode.ExtensionContext) {
       documents.set(key, { version, revision, matches, supported });
     }
     paint();
-    if (currentCache && !session.demo) await concurrentMap([...visibleNames()], name => currentCache.detail(name));
+    if (currentCache && currentCache === cache && !session.demo && focused) {
+      const browse = flagsTree.visible ? flagsProvider.visibleFlags().filter(flag => { const e = currentCache.entries.get(flag.name); return e && !e.detailed && !e.error; }).map(flag => flag.name) : [];
+      await concurrentMap([...new Set([...visibleNames(), ...browse])], name => currentCache === cache && focused ? currentCache.detail(name) : Promise.resolve());
+    }
     paint();
   }
   function scheduleScan() {
@@ -123,6 +129,7 @@ export async function activate(context: vscode.ExtensionContext) {
   function changed() { paint(); scheduleScan(); }
   async function refresh() {
     clearTimeout(timer);
+    if (!focused || disposed) { paint(); return; }
     const current = cache;
     if (current && !session.demo) {
       await current.refresh(visibleNames);
@@ -131,7 +138,11 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     paint();
     clearTimeout(timer);
-    if (cache && !session.demo && !disposed) timer = setTimeout(() => { void refresh(); }, Math.min(interval() * 2 ** failures, 300000));
+    if (focused && cache && !session.demo && !disposed) timer = setTimeout(() => { void refresh(); }, Math.min(interval() * 2 ** failures, 300000));
+  }
+  async function setFocused(value: boolean) {
+    focused = value; clearTimeout(timer);
+    if (focused) { await refresh(); scheduleScan(); }
   }
   function replace(next?: FlagCache) {
     clearTimeout(timer); clearTimeout(debounce);
@@ -156,7 +167,7 @@ export async function activate(context: vscode.ExtensionContext) {
     replace(next);
     await scan();
     beforeDemo = undefined;
-    timer = setTimeout(() => { void refresh(); }, interval());
+    if (focused) timer = setTimeout(() => { void refresh(); }, interval());
     welcome.update();
   }
   async function startDemo(openSample = true) {
@@ -293,6 +304,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
   register('quickOpen', async () => { const flag = await chooseFlag(); if (flag) await vscode.commands.executeCommand('unleash.inspectFlag', flag.name); });
   register('copyFlagName', async value => { const flag = await chooseFlag(value); if (flag) { await vscode.env.clipboard.writeText(flag.name); void vscode.window.setStatusBarMessage(`Copied ${flag.name}`, 2500); } });
+  register('copyFlagReference', async value => { const flag = await chooseFlag(value); if (flag) await vscode.env.clipboard.writeText(session.url && !session.demo ? `${flag.name} — ${flagUrl(session.url, flag)}` : flag.name); });
   register('findFlagUsages', async value => { const flag = await chooseFlag(value); if (flag) await vscode.commands.executeCommand('workbench.action.findInFiles', { query: flag.name, isRegex: false, isCaseSensitive: true, matchWholeWord: false, triggerSearch: true }); });
   register('environment', async () => {
     const environments = [...new Set([...entries().values()].flatMap(e => e.flag.environments.map(x => x.name)))].sort();
@@ -316,6 +328,26 @@ export async function activate(context: vscode.ExtensionContext) {
   });
   context.subscriptions.push(
     status, sidebar, welcome, details, flagsProvider, flagsTree, flagsTree.onDidChangeVisibility(scheduleScan), vscode.window.registerTreeDataProvider('unleash.home', sidebar), ...decorationTypes.values(),
+    vscode.window.onDidChangeWindowState(state => { void setFocused(state.focused); }),
+    vscode.languages.registerCompletionItemProvider('*', { async provideCompletionItems(doc, pos, token, completionContext) {
+      if (completionContext.triggerKind === vscode.CompletionTriggerKind.TriggerCharacter || !cache || (session.demo ? doc.uri.toString() !== demoSample : doc.uri.toString() === demoSample)) return;
+      const text = doc.getText();
+      if (text.length > config().get<number>('maxFileSizeKB', 512) * 1024) return;
+      const version = doc.version;
+      const grammar = await grammars.get(doc.languageId);
+      if (!grammar || token.isCancellationRequested || version !== doc.version) return;
+      const span = completionRange(text, doc.offsetAt(pos), grammar);
+      if (!span) return;
+      return [...entries().values()].filter(entry => safeCompletionName(entry.flag.name, span.quote)).map(entry => {
+        const item = new vscode.CompletionItem(entry.flag.name, vscode.CompletionItemKind.Value);
+        item.range = new vscode.Range(doc.positionAt(span.start), doc.positionAt(span.end));
+        item.insertText = entry.flag.name;
+        item.detail = `${symbols[assessment(entry).status]} ${entry.flag.project}${entry.flag.stale ? ' · Stale' : ''}`;
+        item.documentation = hover({ name: entry.flag.name, start: span.start, end: span.end });
+        if (entry.flag.stale) item.tags = [vscode.CompletionItemTag.Deprecated];
+        return item;
+      });
+    } }),
     vscode.languages.registerHoverProvider('*', { provideHover(doc, pos) {
       const data = documents.get(doc.uri.toString());
       if (data?.version !== doc.version) return;
@@ -365,5 +397,5 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand('unleash.openWelcome');
     }
   }
-  return { ...(context.extensionMode === vscode.ExtensionMode.Test ? { connectForTest: connect } : {}), getKnownFlags: () => flagsProvider.allMatches(), getDetailHtml: () => selectedContent()?.html, isDemo: () => session.demo, getMatches: (uri: string) => documents.get(uri)?.matches ?? [], getFlagStatus: (name: string) => { const entry = entries().get(name); return entry && assessment(entry); } };
+  return { ...(context.extensionMode === vscode.ExtensionMode.Test ? { connectForTest: connect, setFocusedForTest: setFocused } : {}), getKnownFlags: () => flagsProvider.allMatches(), getDetailHtml: () => selectedContent()?.html, isDemo: () => session.demo, getMatches: (uri: string) => documents.get(uri)?.matches ?? [], getFlagStatus: (name: string) => { const entry = entries().get(name); return entry && assessment(entry); } };
 }

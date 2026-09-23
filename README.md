@@ -64,7 +64,7 @@ Recognition has a 100ms budget per document and skips files over 512KB by defaul
 
 ## Refresh and cache
 
-The default refresh is **15 seconds**, configurable with `unleash.refreshIntervalSeconds`. The extension refreshes project/flag catalogs and details for flags in visible editors. Detailed requests have a concurrency limit of four and are shared when in flight. Background catalogs never overlap. Failures back off; authentication and permission errors are shown in the status-bar tooltip. One inaccessible project currently makes the catalog refresh fail visibly rather than silently claim complete coverage.
+Polling pauses while the VS Code window is inactive and resumes with a refresh on return. The default refresh is **15 seconds**, configurable with `unleash.refreshIntervalSeconds`. The extension refreshes project/flag catalogs and details for flags in visible editors or the open flag configuration page. Browsing the Flags list loads missing details once; it does not repeatedly poll every listed flag. Cached list statuses become unverified when outdated. Detailed requests have a concurrency limit of four and are shared when in flight. Background catalogs never overlap. Failures back off; authentication and permission errors are shown in the status-bar tooltip. One inaccessible project currently makes the catalog refresh fail visibly rather than silently claim complete coverage.
 
 Flag metadata is cached in memory for the current extension session, not persisted to disk. Opening or editing a document uses the local catalog and fetches only newly encountered flag details. Editing is debounced. Configuration older than twice the refresh interval, or data affected by a failed request, is shown as unknown. The hover displays the fetch time. Deleting flags or losing access removes them after a successful catalog refresh. No live credentials are required for demo mode or automated tests.
 
@@ -120,3 +120,9 @@ When upgrading from the earlier **local-development** build, uninstall that exte
 API reference: [Unleash Admin API](https://docs.getunleash.io/api/admin-api-overview). Editor reference: [VS Code syntax highlighting](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide).
 
 Automated checks cover mocked API responses, classification, connection/Demo state, installed language grammars, and the VS Code Extension Host.
+
+## Flag autocomplete and cleanup
+
+Invoke IntelliSense inside a string (Ctrl+Space) to complete a flag name from the local catalog. Suggestions include project, cached status, description and configuration; completing a flag makes no API requests. Installed language grammars identify strings, excluding comments and interpolated expressions. Unsupported literals are skipped.
+
+Stale flags are labeled in the Flags panel, configuration page and suggestions. Use **Find in workspace** to locate their usages. **Copy Flag Reference** in the flag context menu copies its name and Unleash URL for sharing.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Complete flag names inside strings using the local cache.
+- Pause polling in inactive windows; stop repeatedly fetching details for the Flags list.
+- Surface stale flags in the list, configuration and suggestions.
+- Copy a flag name and Unleash link together.
+
 ## 0.2.1
 
 - Simplified connection-page copy and styling, with the Unleash Cloud URL format and a stronger Demo button.

@@ -28,7 +28,7 @@ export class FlagCache {
         const old = this.entries.get(flag.name);
         // Catalog responses omit strategies. Preserve a detail only until revalidated.
         next.set(flag.name, old?.detailed && old.flag.project === flag.project
-          ? { ...old }
+          ? { ...old, flag: { ...old.flag, stale: flag.stale, description: flag.description } }
           : { flag, detailed: false, fetchedAt: Date.now() });
       }
       this.entries = next;

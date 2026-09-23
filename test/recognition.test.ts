@@ -69,3 +69,32 @@ test('quotes inside a multiline literal are not complete strings', { skip: !lang
   assert.equal(matches.length, 1);
   assert.equal(matches[0].start, source.lastIndexOf('new-checkout'));
 });
+
+test('completion replaces whole string contents and rejects comments, regex and interpolation', async () => {
+  const { completionRange } = await import('../src/completion');
+  const grammar = (await registry.loadGrammar(languages.get('typescript')!))!;
+  for (const source of ['f("new-|");', 'f("new-|checkout");', 'f("|new-checkout");', 'f("|");', 'f("new-|']) {
+    const offset = source.indexOf('|'); const text = source.replace('|', '');
+    const range = completionRange(text, offset, grammar);
+    assert(range, source);
+    assert.equal(range.start, text.indexOf('"') + 1);
+  }
+  for (const source of ['// "new-|"', 'const x = /"new-|"/;', 'const x = `new-|${suffix}`;', '/*\n"new-|"\n*/', 'const name = new|']) {
+    const offset = source.indexOf('|');
+    assert.equal(completionRange(source.replace('|', ''), offset, grammar), undefined, source);
+  }
+});
+
+test('completion recognizes strings across the installed language grammars', async () => {
+  const { completionRange, safeCompletionName } = await import('../src/completion');
+  for (const [language, source] of cases) {
+    if (!languages.has(language)) continue;
+    const grammar = (await registry.loadGrammar(languages.get(language)!))!;
+    const start = source.indexOf('new-checkout');
+    const range = completionRange(source, start + 4, grammar);
+    assert(range, language);
+    assert.equal(source.slice(range.start, range.end), 'new-checkout', language);
+  }
+  assert(safeCompletionName('new-checkout', '"'));
+  for (const name of ['a"b', 'a\\b', 'a\nb', '${value}', '{value}']) assert(!safeCompletionName(name, '"'));
+});

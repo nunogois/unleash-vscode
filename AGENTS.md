@@ -25,3 +25,5 @@ This is Nuno Góis’s independent community extension, not an official Unleash 
 Demo follows the active sample tab: restore the saved connection when switching away, reactivate on return, and end Demo when its last tab closes. Never match the sample catalog in real source files.
 
 Connection edits reuse the saved PAT when left blank, including when the URL changes; validate the new endpoint before saving it. Keep onboarding copy concise and product-focused, without marketing taglines or an author footer.
+
+Autocomplete uses only the local catalog and grammar-confirmed strings; never request flag data from a completion provider. Polling pauses while the window is inactive. Load missing Flags-list details once, but reserve recurring detail refresh for flags visible in code or the open configuration page. Keep stale markers independent of activation status.

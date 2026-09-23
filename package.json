@@ -2,7 +2,7 @@
   "name": "unleash-vscode",
   "displayName": "Unleash for VS Code",
   "description": "See Unleash feature flag configuration in your code, across projects and environments.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "nunogois",
   "license": "MIT",
   "engines": {
@@ -130,6 +130,10 @@
       {
         "command": "unleash.moreFlags",
         "title": "Unleash: Show More Flags"
+      },
+      {
+        "command": "unleash.copyFlagReference",
+        "title": "Unleash: Copy Flag Reference"
       }
     ],
     "configuration": {
@@ -279,6 +283,11 @@
         },
         {
           "command": "unleash.openFlag",
+          "when": "view == unleash.flags && viewItem == unleashFlag",
+          "group": "navigation"
+        },
+        {
+          "command": "unleash.copyFlagReference",
           "when": "view == unleash.flags && viewItem == unleashFlag",
           "group": "navigation"
         }
